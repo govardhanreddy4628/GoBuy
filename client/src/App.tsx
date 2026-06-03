@@ -17,12 +17,11 @@ import ProductDetails from "./components/productDetails";
 import Productcategory from "./components/productcategory";
 import BlogDetail from "./components/BlogDetails";
 import BlogSection from "./components/BlogSection";
-import { Dashboard } from "./components/admin/dashboard";
+//import { Dashboard } from "./components/admin/DashBoard/dashboard.tsx";
 import { AuthProvider } from "./context/authContext";
 import AddressForm from "./components/addressForm";
 import OtpVerify from "./components/auth/otpVerify.tsx";
 import AddressPage from "./components/addAddress";
-import Testh from "./components/Testh";
 import ResetPassword from "./components/auth/resetPassword";
 import ForgotPassword from "./components/auth/forgotPassword";
 import Toaster from "./ui/Toaster";
@@ -33,7 +32,6 @@ import GuestRoute from "./routes/GuestRoute";
 //import ProtectedRoute from "./routes/ProtectedRoute";
 import Chat from "./components/admin/chat/chat";
 import Calendar2 from "./components/admin/calendar2/calendar2";
-import Calendar3 from "./components/admin/calendar3/Calendar3";
 //import Cp from "./components/admin/cp";
 import CreateProduct3 from "./components/admin/products/CreateProduct/CreateProduct3";
 //import { CreateProduct2 } from "./components/admin/products/CreateProduct";
@@ -67,9 +65,17 @@ import Orders from "./components/admin/orders/Orders.tsx";
 //import { ProductProvider } from "./components/admin/context/productsContext.tsx";
 //import Counter from "./move/counter.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WishlistProvider } from "./context/wishlistContext.tsx";
 import AdminRoute from "./routes/AdminRoute.tsx";
 import CartPage from "./pages/cartPage.tsx";
+import { Calendar } from "./components/admin/calendar/Calendar.tsx";
+import PhonePeClone from "./components/fakePhonepe.tsx";
+import Payment from "./components/payment/payment.tsx";
+import StarRating from "./components/starRating.tsx";
+import WishlistPage from "./pages/whishListPage.tsx";
+import { WishlistProvider } from "./context/wishlistContext.tsx";
+import {Dashboard} from "./components/admin/DashBoard/dashboard.tsx";
+import { CustomerProvider } from "./components/admin/context/customerContext.tsx";
+import AdminBlogs from "./components/admin/Blogs/BlogsManage.tsx";
 
 const App = () => {
   const queryClient = new QueryClient();
@@ -79,10 +85,11 @@ const App = () => {
       {/* <FormikComponent/> */}
       {/* <ThemeProvider theme={theme}> */}
       <ThemeProvider defaultTheme="system" storageKey="marketpulse-ui-theme">
-          <AuthProvider>
-        <CartProvider>
+        <AuthProvider>
+          <CartProvider>
             <WishlistProvider>
               <CategoryProvider>
+                <CustomerProvider>
                 <QueryClientProvider client={queryClient}>
 
                   {/* <RegisterForm/> */}
@@ -105,10 +112,12 @@ const App = () => {
                     <Route path='/' element={<Home />}></Route>
                     <Route path="/address" element={<AddressForm />}></Route>
                     <Route path='productdetails/:id' element={<ProductDetailsPage />}></Route>
+                    <Route path='search' element={<ProductDetailsPage />}></Route>
                     <Route path="products" element={<ProductCategories />}></Route>
                     <Route path="/blogsection" element={<BlogSection />}></Route>
                     <Route path="/blog/:id" element={<BlogDetail />} />
                     <Route path="cartPage" element={<CartPage />}></Route>
+                    <Route path="wishlist" element={<WishlistPage />} />
                     <Route path="/myaccount" element={<MyAccount />}>
                       <Route index element={<MyProfile />} />
                       <Route path="profile" element={<MyProfile />} />
@@ -118,10 +127,12 @@ const App = () => {
                     </Route>
                     <Route path="addaddress" element={<AddressPage />}></Route>
                     <Route path="checkout" element={<Checkout />}></Route>
+                    <Route path="payment" element={<Payment />}></Route>
+                    <Route path="phonepe/:id" element={<PhonePeClone />}></Route>
                     <Route path="order-confirmation" element={<OrderConfirmation />}></Route>
-                    <Route path="category-chart" element={<Testh />}></Route>
                     <Route path="customersupport" element={<CustomerSupport />}></Route>
                     <Route path="rating"></Route>
+                    <Route path="starrating" element={<StarRating />}></Route>
                     {/* </Route> */}
 
                     {/* <Route element={<AdminRoute />}> */}
@@ -136,9 +147,10 @@ const App = () => {
                       <Route path="/customers" element={<CustomersTable />} />
                       <Route path="/agents" element={<AdminAgentLayout />} />
                       <Route path="admin-profile" element={<AdminProfile />} />
+                      <Route path="blogs" element={<AdminBlogs />} />
                       <Route path="chat" element={<Chat />} />
                       <Route path="calendar2" element={<Calendar2 />} />
-                      <Route path="calendar3" element={<Calendar3 />} />
+                      <Route path="calendar" element={<Calendar />} />
                       {/* <Route path="products/all" element={<Products />} /> */}
                       <Route path="products/all" element={<Products2 />} />
                       <Route path="products/create" element={<CreateProduct3 />} />
@@ -170,10 +182,11 @@ const App = () => {
                   <Toaster />
 
                 </QueryClientProvider>
+                </CustomerProvider>
               </CategoryProvider>
             </WishlistProvider>
-        </CartProvider>
-          </AuthProvider>
+          </CartProvider>
+        </AuthProvider>
       </ThemeProvider >
 
     </>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Package, AlertTriangle, XCircle, Settings2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../ui/card";
@@ -15,8 +15,6 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbS
 import { Skeleton } from "../../../../ui/skeleton";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "../../../../ui/pagination";
 //import { toast } from "sonner";
-
-
 
 const Products = () => {
   const navigate = useNavigate();
@@ -186,6 +184,7 @@ const Products = () => {
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              
               <DropdownMenuCheckboxItem
                 checked={visibleColumns.image}
                 onCheckedChange={(checked) =>

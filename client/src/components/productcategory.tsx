@@ -3,7 +3,6 @@ import { FaAngleDown } from "react-icons/fa6";
 import { IoExpand, IoMenuSharp } from "react-icons/io5";
 import { IoGridSharp } from "react-icons/io5";
 import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import Slider from '@mui/material/Slider';
 import { Button, IconButton, Typography } from '@mui/material';
 import { FaRegHeart } from 'react-icons/fa';
@@ -13,6 +12,7 @@ import Box from '@mui/material/Box';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 
 interface productsData {
@@ -345,13 +345,9 @@ const Productcategory = () => {
                                 <Button className='flex !w-[180px] !border-[1.5px] !border-solid !border-red-400 !bg-inherit !text-red-400 gap-3 !my-2 hover:!text-white hover:!bg-black hover:!border-black'><ShoppingCartCheckoutIcon /> ADD TO CART</Button>
                             </div>
                         </div>
-
                     </div>
-
-
                 </div>
             </section>
-
         </section>
     )
 }

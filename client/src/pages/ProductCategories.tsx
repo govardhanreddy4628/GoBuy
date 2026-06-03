@@ -1,6 +1,6 @@
 import React from 'react'
 import Layout from '../components/layout'
-import Productcategory from '../components/productcategory'
+import Productcategory from '../components/productcategory2'
 
 const ProductCategories = () => {
   return (
@@ -10,4 +10,4 @@ const ProductCategories = () => {
   )
 }
 
-export default ProductCategories
+export default ProductCategories;

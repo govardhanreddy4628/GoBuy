@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export interface CalendarEvent {
-          id?: string;
+          _id: string;
           user_id: string;
           title: string;
           description: string;
@@ -23,5 +23,4 @@ export interface CalendarEvent {
           metadata: Json;
           created_at: string;
           updated_at: string;
-        
 }

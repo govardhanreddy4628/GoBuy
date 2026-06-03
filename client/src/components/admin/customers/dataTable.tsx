@@ -56,8 +56,6 @@ function DataTable<T extends { [key: string]: any }>({
   return <IoCaretDownOutline className="inline-block ml-1 text-blue-500" />;
 };
 
- 
-
 
   return (
     <div className="overflow-auto ">

@@ -13,6 +13,7 @@ import {
   getCurrentUserController,
   resendOtpController,
   refreshController,
+  getCustomers,
 } from "../controllers/userController.js";
 import { uploadSingle } from "../middleware/multer.js";
 import { acceptInviteController, inviteAdminController, resendInviteController, revokeInviteController } from "../controllers/adminController.js";
@@ -36,6 +37,7 @@ router.get("/auth/refresh", asyncHandler(refreshController))
 //router.get("/auth/refresh", authenticate(), asyncHandler(getNewAccessToken));
 // router.put('/user-avatar', auth, upload.array('avatar'), userAvatarController)   // the name(avatar) should match the name in the frontend form and in database
 router.delete("/deleteImage", authenticate(), asyncHandler(removeImgFromCloudinary));
+router.get("/customers", getCustomers);
 // router.put(':/id', authorize, updateUserDetails)
 // router.post('/refresh-token', refreshTokenController);
 

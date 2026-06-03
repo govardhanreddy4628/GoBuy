@@ -20,6 +20,8 @@ interface AgentChatProps {
 export function AgentChat({ agent, messages, isLoading, onSendMessage, onRateMessage }: AgentChatProps) {
   const [input, setInput] = useState('');
   const [attachedFile, setAttachedFile] = useState<any>(null);
+  const [streamingText, setStreamingText] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -84,7 +86,7 @@ export function AgentChat({ agent, messages, isLoading, onSendMessage, onRateMes
               </>
             )}
           </div>
-          
+
           <div className="flex items-center gap-2">
             <SearchMessages messages={messages} onMessageSelect={scrollToMessage} />
             <MessageStats messages={messages} agent={agent} />
@@ -115,8 +117,8 @@ export function AgentChat({ agent, messages, isLoading, onSendMessage, onRateMes
               {/* Avatar */}
               <div className={`
                 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
-                ${message.role === 'user' 
-                  ? 'bg-admin-user-message text-admin-user-message-fg ml-3' 
+                ${message.role === 'user'
+                  ? 'bg-admin-user-message text-admin-user-message-fg ml-3'
                   : 'bg-admin-assistant-message border border-border mr-3'
                 }
               `}>
@@ -146,24 +148,24 @@ export function AgentChat({ agent, messages, isLoading, onSendMessage, onRateMes
                     </div>
                   </div>
                 )}
-                
+
                 <p className="text-sm whitespace-pre-wrap leading-relaxed">
                   {message.content}
                 </p>
-                
+
                 <div className="flex items-center justify-between mt-2">
                   <div className={`
                     text-xs 
-                    ${message.role === 'user' 
-                      ? 'text-admin-user-message-fg/70' 
+                    ${message.role === 'user'
+                      ? 'text-admin-user-message-fg/70'
                       : 'text-muted-foreground'
                     }
                   `}>
                     {formatTime(message.timestamp)}
                   </div>
-                  
-                  <MessageActions 
-                    message={message} 
+
+                  <MessageActions
+                    message={message}
                     onRateMessage={onRateMessage}
                   />
                 </div>
@@ -189,7 +191,7 @@ export function AgentChat({ agent, messages, isLoading, onSendMessage, onRateMes
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -205,7 +207,7 @@ export function AgentChat({ agent, messages, isLoading, onSendMessage, onRateMes
             />
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="flex space-x-3">
           <div className="flex-1 flex items-end gap-2">
             <Input
@@ -231,8 +233,8 @@ export function AgentChat({ agent, messages, isLoading, onSendMessage, onRateMes
               />
             )}
           </div>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={!input.trim() || isLoading}
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
           >

@@ -3,7 +3,8 @@ import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
 import { useCategories } from "./admin/context/categoryContext";
-import ProductsSlider from "./categoryTabSlider";
+import ProductsSlider from "./productsSlider";
+
 
 interface TabPanelProps {
   children?: React.ReactNode;

@@ -36,7 +36,6 @@ export const AuthProvider = ({
 }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
 const [isAuthLoading, setIsAuthLoading] = useState(true);
-
 const isAuthenticated = !!user; 
 
   const LOGOUT_FLAG = "didLogout";

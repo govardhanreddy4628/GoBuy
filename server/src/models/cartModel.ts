@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
-
 export interface ICart extends Document {
   productId: mongoose.Types.ObjectId;
   quantity: number;
@@ -8,7 +7,6 @@ export interface ICart extends Document {
   color?: unknown;
   expiresAt: Date;
 }
-
 
 const cartSchema = new Schema<ICart>(
   {
@@ -51,8 +49,5 @@ cartSchema.set('toJSON', {
   },
 });
 
-
-
 const CartModel: Model<ICart> = mongoose.model<ICart>('Cart', cartSchema);
-
 export default CartModel;

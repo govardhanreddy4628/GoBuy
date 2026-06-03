@@ -34,6 +34,11 @@ export const navItems: NavItem[] = [
   { title: 'Orders', icon: IoCubeOutline, href: '/orders' },
   { title: 'Customers', icon: FaRegUserCircle, href: '/customers' },
   {
+      title: "Categories",
+      icon: BiCategory,
+      href: "/categories/manage",
+    },
+  {
     title: 'Products',
     icon: RiProductHuntLine,
     subMenu: [

@@ -1,21 +1,10 @@
 // services/api.ts
-import axios, {
-  AxiosError,
-  AxiosInstance,
-  AxiosRequestConfig,
-} from "axios";
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 
-/* ======================
-   Config
-====================== */
+//Config
+const BASE_URL = import.meta.env.VITE_BACKEND_URL_LOCAL || "http://localhost:5000";
 
-const BASE_URL =
-  import.meta.env.VITE_BACKEND_URL_LOCAL || "http://localhost:5000/api";
-
-/* ======================
-   In-memory access token
-====================== */
-
+//In-memory access token
 let accessToken: string | null = null;
 
 export const setAccessToken = (token: string | null) => {
@@ -24,26 +13,19 @@ export const setAccessToken = (token: string | null) => {
 
 export const getAccessToken = () => accessToken;
 
-/* ======================
-   Axios instance
-====================== */
 
+// Axios instance
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   withCredentials: true, // refresh cookie
   timeout: 10000,
 });
 
-/* ======================
-   Refresh lock
-====================== */
-
+// Refresh lock
 let refreshPromise: Promise<string> | null = null;
 
-/* ======================
-   Request interceptor
-====================== */
 
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
     if (accessToken) {
@@ -55,10 +37,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-/* ======================
-   Response interceptor
-====================== */
-
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {

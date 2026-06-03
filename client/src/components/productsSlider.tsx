@@ -9,37 +9,6 @@ import { useAuth } from "../context/authContext";
 import { Box } from "@mui/material";
 import { Product } from "../types/product";
 
-
-// ✅ Mock products data
-const mockProducts = [
-  {
-    id: 1,
-    name: "Gold Necklace",
-    description: "Elegant 22K gold necklace for all occasions.",
-    brand: "Spicez Gold",
-    discount: 10,
-    price: 999.99,
-    originalPrice: 1199.99,
-    images: [
-      "https://serviceapi.spicezgold.com/download/1742463096955_hbhb1.jpg",
-      "https://serviceapi.spicezgold.com/download/1742463096956_hbhb2.jpg",
-    ],
-  },
-  {
-    id: 2,
-    name: "Diamond Earrings",
-    description: "Beautiful diamond studs with 18K gold base.",
-    brand: "Luxe Jewels",
-    discount: 15,
-    price: 599.99,
-    originalPrice: 699.99,
-    images: [
-      "https://serviceapi.spicezgold.com/download/1742463096955_hbhb1.jpg",
-      "https://serviceapi.spicezgold.com/download/1742463096956_hbhb2.jpg",
-    ],
-  },
-];
-
 // ✅ Skeleton Card
 const SkeletonCard = () => (
   <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-400 shadow-md rounded-md flex flex-col items-center relative overflow-hidden animate-pulse">
@@ -54,29 +23,117 @@ const SkeletonCard = () => (
   </div>
 );
 
-const ProductsSlider = ({ handleClickOpen, headerName }) => {
-  const [products, setProducts] = useState<any[]>([]);
+type Props = {
+  handleClickOpen: (product: Product) => void;
+  headerName?: string;
+  route?: string;
+  categorySlug?: string; // ✅ NEW
+};
+
+const ProductsSlider = ({
+  handleClickOpen,
+  headerName,
+  route,
+  categorySlug,
+}: Props) => {
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ CONTEXTS
   const { isAuthenticated } = useAuth();
-  const { cart, addToCart, updateQuantity } = useCart();
+  const { cart, addToCart, updateQuantity, loadingCartItems, getCartKey } = useCart();
 
-  // ✅ FETCH PRODUCTS FROM BACKEND
+  // =========================
+  // ✅ FETCH PRODUCTS (UNIFIED)
+  // =========================
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
 
-        const res = await fetch(
-          "http://localhost:8080/api/v1/product/top-rated"
-        );
-        const data = await res.json();
+        // =========================
+        // ✅ CATEGORY BASED
+        // =========================
+        if (categorySlug) {
+          const res = await fetch(
+            `http://localhost:8080/api/v1/product/category/${categorySlug}`
+          );
 
-        if (data.success) {
-          setProducts(data.data);
-        } else {
-          setProducts([]);
+          const data = await res.json();
+          setProducts(data.success ? data.data : []);
+          return;
+        }
+
+        // =========================
+        // ✅ RECENTLY VIEWED
+        // =========================
+        if (route === "recently-viewed") {
+          if (isAuthenticated) {
+            const stored = localStorage.getItem("recentlyViewed");
+            const localIds: string[] = stored ? JSON.parse(stored) : [];
+
+            if (localIds.length > 0) {
+              await fetch(
+                `http://localhost:8080/api/v1/product/merge-recently-viewed`,
+                {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ ids: localIds }),
+                }
+              );
+              localStorage.removeItem("recentlyViewed");
+            }
+
+            const res = await fetch(
+              `http://localhost:8080/api/v1/product/recently-viewed`,
+              { credentials: "include" }
+            );
+
+            const data = await res.json();
+            setProducts(data.success ? data.data : []);
+          } else {
+            const stored = localStorage.getItem("recentlyViewed");
+            const ids: string[] = stored ? JSON.parse(stored) : [];
+
+            if (ids.length === 0) {
+              setProducts([]);
+              return;
+            }
+
+            const res = await fetch(
+              `http://localhost:8080/api/v1/product/by-ids`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids }),
+              }
+            );
+
+            const data = await res.json();
+
+            if (data.success) {
+              const ordered = ids
+                .map((id) => data.data.find((p: Product) => p._id === id))
+                .filter(Boolean);
+
+              setProducts(ordered as Product[]);
+            } else {
+              setProducts([]);
+            }
+          }
+        }
+
+        // =========================
+        // ✅ NORMAL ROUTES
+        // =========================
+        else if (route) {
+          const res = await fetch(
+            `http://localhost:8080/api/v1/product/${route}`,
+            { credentials: "include" }
+          );
+
+          const data = await res.json();
+          setProducts(data.success ? data.data : []);
         }
       } catch (err) {
         console.error("Failed to fetch products:", err);
@@ -87,52 +144,22 @@ const ProductsSlider = ({ handleClickOpen, headerName }) => {
     };
 
     fetchProducts();
-  }, []);
-
+  }, [route, categorySlug, isAuthenticated]);
 
   // =========================
-  // ✅ CART HANDLERS (CLEAN)
+  // ✅ CART HANDLERS
   // =========================
   const handleAdd = (product: Product) => {
-    // if (!isAuthenticated) {
-    //   console.log("Login required");
-    //   return;
-    // }
     addToCart(product, 1);
   };
 
-  const handleIncrease = (productId: string) => {
-    updateQuantity(productId, "inc");
+  const handleIncrease = (key: string) => {
+    updateQuantity(key, "inc");
   };
 
-  const handleDecrease = (productId: string) => {
-    updateQuantity(productId, "dec");
+  const handleDecrease = (key: string) => {
+    updateQuantity(key, "dec");
   };
-
-
-
-  // // with mock data
-  // const handleAddToCart = (id: number) => {
-  //   setCart((prev) => ({ ...prev, [id]: 1 }));
-  // };
-
-  // // ✅ Increase Qty
-  // const handleIncrease = (id: number) => {
-  //   setCart((prev) => ({ ...prev, [id]: prev[id] + 1 }));
-  // };
-
-  // // ✅ Decrease Qty
-  // const handleDecrease = (id: number) => {
-  //   setCart((prev) => {
-  //     const qty = prev[id] - 1;
-  //     if (qty <= 0) {
-  //       const { [id]: _, ...rest } = prev;
-  //       return rest;
-  //     }
-  //     return { ...prev, [id]: qty };
-  //   });
-  // };
-
 
   return (
     <div className="categorySwiper my-8">
@@ -140,50 +167,48 @@ const ProductsSlider = ({ handleClickOpen, headerName }) => {
         sx={{ width: "95%" }}
         className="w-full flex justify-between items-center mx-auto pt-4 mb-4"
       >
-        {/* Left: Heading */}
-        <div className="flex flex-col justify-start">
-          <h1 className="text-[24px] font-bold">{headerName}</h1>
-        </div>
+        <h1 className="text-[24px] font-bold">{headerName}</h1>
       </Box>
+
       <div className="w-[95%] mx-auto">
         <Swiper
           slidesPerView={6}
           spaceBetween={10}
           navigation={true}
           modules={[Navigation]}
-          className="mySwiper"
           breakpoints={{
-            0: { slidesPerView: 1.2, spaceBetween: 10 },
-            480: { slidesPerView: 2, spaceBetween: 10 },
-            640: { slidesPerView: 2.5, spaceBetween: 12 },
-            768: { slidesPerView: 3, spaceBetween: 10 },
-            1024: { slidesPerView: 4, spaceBetween: 12 },
-            1280: { slidesPerView: 6, spaceBetween: 10 },
-            1536: { slidesPerView: 6, spaceBetween: 12 },
+            0: { slidesPerView: 1.2 },
+            480: { slidesPerView: 2 },
+            640: { slidesPerView: 2.5 },
+            768: { slidesPerView: 3 },
+            1024: { slidesPerView: 4 },
+            1280: { slidesPerView: 6 },
           }}
         >
           {loading
-            ? Array.from({ length: 6 }).map((_, index) => (
-              <SwiperSlide key={index}>
-                <SkeletonCard />
-              </SwiperSlide>
-            ))
-            : products.map((product) => {
-              const item = cart[product._id];
-              return (
-                <SwiperSlide key={product._id}>
-                  <ProductCard
-                    product={product}
-                    item={item}
-                    handleAdd={handleAdd}
-                    handleIncrease={handleIncrease}
-                    handleDecrease={handleDecrease}
-                    handleClickOpen={handleClickOpen}
-                  />
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <SwiperSlide key={i}>
+                  <SkeletonCard />
                 </SwiperSlide>
-              );
-            })
-          }
+              ))
+            : products.map((product) => {
+                const key = getCartKey(product._id);
+                const item = cart[key];
+
+                return (
+                  <SwiperSlide key={product._id}>
+                    <ProductCard
+                      product={product}
+                      item={item}
+                      handleAdd={handleAdd}
+                      handleIncrease={() => handleIncrease(key)}
+                      handleDecrease={() => handleDecrease(key)}
+                      handleClickOpen={handleClickOpen}
+                      loadingCartItems={loadingCartItems}
+                    />
+                  </SwiperSlide>
+                );
+              })}
         </Swiper>
       </div>
     </div>

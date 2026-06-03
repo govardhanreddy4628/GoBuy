@@ -3,14 +3,14 @@ import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CartItem from "./cartItem";
 import { useCart } from "../context/cartContext";
-import { useAuth } from "../context/authContext";
-import toast from "react-hot-toast";
+//import { useAuth } from "../context/authContext";
+//import toast from "react-hot-toast";
 
 const Cart = () => {
   const { cart } = useCart();
   const navigate = useNavigate();
 
-  const { isAuthenticated } = useAuth();
+  //const { isAuthenticated } = useAuth();
 
   const cartItems = Object.values(cart);
 
@@ -18,6 +18,9 @@ const Cart = () => {
     const price = item.product?.finalPrice || 0;
     return acc + price * item.quantity;
   }, 0);
+
+  const shipping = subtotal > 500 ? 0 : 99;
+  const total = subtotal + shipping;
 
   const handleCheckout = () => {
     // //  commentout below code later.
@@ -61,8 +64,8 @@ const Cart = () => {
         </div>
 
         {/* RIGHT */}
-        <div className="w-[30%]">
-          <div className="shadow-md rounded-md bg-white p-5 sticky top-5">
+        <div className="w-[30%] ml-2 sticky top-5">
+          <div className="shadow-md rounded-md bg-white p-5">
             <h3 className="pb-3 font-semibold text-lg">Cart Total</h3>
             <hr />
 
@@ -76,13 +79,13 @@ const Cart = () => {
 
               <p className="flex justify-between">
                 <span>Shipping</span>
-                <span className="font-bold">Free</span>
+                <span className="font-bold">₹ {shipping.toFixed(2)}</span>
               </p>
 
               <p className="flex justify-between pt-2 border-t text-base">
                 <span className="font-semibold">Total</span>
                 <span className="text-red-500 font-bold">
-                  ₹ {subtotal.toFixed(2)}
+                  ₹ {total.toFixed(2)}
                 </span>
               </p>
             </div>

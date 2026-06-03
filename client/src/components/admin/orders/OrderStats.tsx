@@ -4,27 +4,28 @@ import { Order } from "./OrderDetailsDialog";
 
 interface OrderStatsProps {
   orders: Order[];
+  totalOrders: number;
 }
 
-export const OrderStats = ({ orders }: OrderStatsProps) => {
+export const OrderStats = ({ orders, totalOrders }: OrderStatsProps) => {
   const stats = [
     {
       title: "Total Orders",
-      value: orders.length,
+      value: totalOrders,
       icon: Package,
       color: "text-primary",
       bgColor: "bg-primary/10",
     },
     {
       title: "Pending",
-      value: orders.filter((o) => o.status === "pending").length,
+      value: orders.filter((o) => o.status === "created").length,
       icon: Clock,
       color: "text-warning",
       bgColor: "bg-warning/10",
     },
     {
       title: "In Transit",
-      value: orders.filter((o) => ["processing", "shipped"].includes(o.status)).length,
+      value: orders.filter((o) => ["confirmed","packed","shipped"].includes(o.status)).length,
       icon: Truck,
       color: "text-accent",
       bgColor: "bg-accent/10",

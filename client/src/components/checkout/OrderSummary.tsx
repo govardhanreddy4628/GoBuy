@@ -3,7 +3,7 @@ import { Separator } from "../../ui/separator";
 
 
 interface CartItem {
-  id: number;
+  id: string;
   name: string;
   price: number;
   quantity: number;
@@ -14,13 +14,13 @@ interface OrderSummaryProps {
   items: CartItem[];
   subtotal: number;
   shipping: number;
-  tax: number;
+  tax?: number;
   total: number;
 }
 
 export const OrderSummary = ({ items, subtotal, shipping, tax, total }: OrderSummaryProps) => {
   return (
-    <Card className="p-6 sticky top-8">
+    <Card className="p-6">
       <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
       
       <div className="space-y-4">
@@ -51,10 +51,10 @@ export const OrderSummary = ({ items, subtotal, shipping, tax, total }: OrderSum
           <span className="text-muted-foreground">Shipping</span>
           <span>₹{shipping}</span>
         </div>
-        <div className="flex justify-between text-sm">
+        {/* <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Tax (18%)</span>
           <span>₹{tax}</span>
-        </div>
+        </div> */}
         
         <Separator className="my-2" />
         

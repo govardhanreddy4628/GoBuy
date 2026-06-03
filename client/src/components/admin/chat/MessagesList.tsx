@@ -10,6 +10,7 @@ interface Message {
   senderName?: string;
   senderAvatar?: string;
   isRead?: boolean;
+  status?: "sending" | "sent" | "failed";
 }
 
 interface MessagesListProps {
@@ -24,6 +25,7 @@ export function MessagesList({ messages }: MessagesListProps) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+  
 
   const shouldShowAvatar = (currentMessage: Message, nextMessage?: Message) => {
     if (!nextMessage) return true;
@@ -46,14 +48,23 @@ export function MessagesList({ messages }: MessagesListProps) {
         {messages.map((message, index) => {
           const prevMessage = index > 0 ? messages[index - 1] : undefined;
           const nextMessage = index < messages.length - 1 ? messages[index + 1] : undefined;
-          
+
           return (
-            <MessageBubble
-              key={message.id}
-              message={message}
-              showAvatar={shouldShowAvatar(message, nextMessage)}
-              isGrouped={isGroupedMessage(message, prevMessage)}
-            />
+            <div key={message.id}>
+              <MessageBubble
+                message={message}
+                showAvatar={shouldShowAvatar(message, nextMessage)}
+                isGrouped={isGroupedMessage(message, prevMessage)}
+              />
+
+              {message.isOwn && (
+                <span className="text-xs ml-2">
+                  {message.status === "sending" && "⏳"}
+                  {message.status === "sent" && "✔️"}
+                  {message.status === "failed" && "❌"}
+                </span>
+              )}
+            </div>
           );
         })}
       </div>

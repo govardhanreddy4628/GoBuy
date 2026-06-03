@@ -9,8 +9,8 @@ import {
   SelectValue,
 } from "../../../ui/select";
 import { useState } from "react";
+import { OrderStatus } from '../types/order';
 
-type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "cancelled";
 
 interface StatusUpdateDialogProps {
   open: boolean;
@@ -49,11 +49,23 @@ export const StatusUpdateDialog = ({
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="processing">Processing</SelectItem>
-              <SelectItem value="shipped">Shipped</SelectItem>
-              <SelectItem value="delivered">Delivered</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              {[
+                "created",
+                "confirmed",
+                "packed",
+                "ready_to_ship",
+                "shipped",
+                "in_transit",
+                "out_for_delivery",
+                "delivered",
+                "cancelled",
+                "returned",
+                "refunded",
+              ].map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status.replace(/_/g, " ").toUpperCase()}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

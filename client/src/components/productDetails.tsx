@@ -14,12 +14,19 @@ import { GoGitCompare } from "react-icons/go";
 import { LiaShippingFastSolid } from "react-icons/lia";
 import { IoChevronDown } from "react-icons/io5";
 import { IoChevronUp } from "react-icons/io5";
-import RatingStats from './rating';
+import RatingStats from './ratingStats';
 import FeedbackRating from './rating2';
 import ProductQA from './productQA';
-import ReviewList from './productReview2';
+import ReviewList from './reviewList';
 import ProductInfo from './productInfo';
+import { useParams } from 'react-router-dom';
+import { POST } from '../api/api_utility';
 
+interface Stats {
+    averageRating: number;
+    totalReviews: number;
+    breakdown: Array<{ _id: number; count: number }>;
+}
 
 interface Specification {
     key: string;
@@ -132,13 +139,21 @@ const ProductDetails = () => {
     const [selectedColor, setSelectedColor] = useState("");
     const [selectedSize, setSelectedSize] = useState<undefined | string>("");
     const [currentVariant, setCurrentVariant] = useState<Variant | null>(null);
+    const [stats, setStats] = useState<Stats | null>(null);
 
     const [thumbsSwiper, setThumbsSwiper] = useState<SwiperType | null>(null);
+
+    const { id } = useParams<{ id: string }>();
 
     useEffect(() => {
         setProduct(productData)
     }, [])
 
+    useEffect(() => {
+        fetch(`http://localhost:8080/api/v1/reviews?productId=${id}`)
+            .then(res => res.json())
+            .then(data => setStats(data.stats));
+    }, [id]);
 
     useEffect(() => {
 
@@ -151,6 +166,19 @@ const ProductDetails = () => {
         }
     }, [selectedColor, selectedSize, product]);
 
+
+    useEffect(() => {
+        const trackView = async () => {
+            if (!id) return;
+            try {
+                await POST(`api/v1/analytics/product-view/${id}`);
+            } catch (error) {
+                console.error("View tracking failed:", error);
+            }
+        };
+        trackView();
+    }, [id]);
+
     if (!product) return <div>Loading...</div>;
 
     const colors = Array.from(new Set(product.variants.map((v) => v.color))) as string[];
@@ -160,6 +188,7 @@ const ProductDetails = () => {
 
     const handleIncrease = () => { };
     const handleDecrease = () => { };
+
 
     return (
         <section className="max-w-9xl rounded-lg shadow-lg bg-gray-200 dark:bg-gray-800">
@@ -224,7 +253,6 @@ const ProductDetails = () => {
                         </Swiper>
                     </div>
                 </div>
-
 
                 {/* Product Info */}
                 <div className="product-content w-full lg:w-[45%] px-4 lg:pr-10 lg:pl-0 text-black flex items-center">
@@ -334,29 +362,29 @@ const ProductDetails = () => {
             <section className='w-[95%] mx-auto'>
                 <ProductInfo />
                 <div className='flex bg-white w-full flex-col lg:flex-row '>
-                    <RatingStats
-                        average={4.1}
-                        totalReviews={12}
-                        breakdown={{
-                            5: 3,
-                            4: 4,
-                            3: 7,
-                            2: 1,
-                            1: 1,
-                        }}
-                    />
+                    {stats && (
+                        <RatingStats
+                            average={stats.averageRating}
+                            totalReviews={stats.totalReviews}
+                            breakdown={
+                                stats.breakdown.reduce((acc: any, item: any) => {
+                                    acc[item._id] = item.count;
+                                    return acc;
+                                }, {})
+                            }
+                            productId={id || ""}
+
+                        />
+                    )}
                     <div className='w-full'>
-                        <ReviewList />
+                        <ReviewList productId={id || ""} />
                     </div>
                 </div>
                 <div>
                     <ProductQA />
                 </div>
             </section>
-
-
         </section>
-
     )
 }
 

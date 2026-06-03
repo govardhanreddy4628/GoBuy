@@ -7,7 +7,9 @@ export interface Order {
   customerName: string;
   customerEmail: string;
   date: string;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  status: "created" | "payment_pending"| "payment_failed"| "confirmed"| "packed"
+  | "ready_to_ship"| "shipped"| "in_transit"| "out_for_delivery"| "delivered"
+  | "cancelled"| "returned"| "refunded";
   total: number;
   items: {
     id: string;

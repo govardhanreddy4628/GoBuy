@@ -1,4 +1,4 @@
-import { Download, Filter, RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { Order } from "./OrderDetailsDialog";
 import { toast } from "../../../hooks/use-toast";
 import { Button } from '../../../ui/button';

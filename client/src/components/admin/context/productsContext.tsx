@@ -56,7 +56,7 @@ const fetchProducts = async (
   filters: Filters
 ): Promise<ProductsResponse> => {
   const res = await axios.get(
-    `${import.meta.env.VITE_BACKEND_URL_LOCAL}/api/v1/product/getallproducts`,
+    `${import.meta.env.VITE_BACKEND_URL_PRODUCTION}/api/v1/product/getallproducts`,
     {
       params: {
         page,
@@ -78,7 +78,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
 
   const [page, setPageState] = useState(1);
-  const [limit, setLimitState] = useState(20);
+  const [limit, setLimitState] = useState(10);
 
   const [filters, setFiltersState] = useState<Filters>({
     search: "",
@@ -120,7 +120,6 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   });
 
   // Actions
-
   const setPage = (value: number) => {
     setPageState(Math.max(1, Math.floor(value)));
   };
@@ -169,6 +168,8 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       throw err;
     }
   };
+
+  console.log("API DATA:", data);
 
   return (
     <ProductContext.Provider

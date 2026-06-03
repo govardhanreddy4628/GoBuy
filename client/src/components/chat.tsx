@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import io from "socket.io-client";
 import axios from "axios";
 
-const socket = io("http://localhost:5000");
+const socket = io("http://localhost:8080");
 
 interface Message {
   senderId: string;
@@ -24,7 +24,7 @@ export default function Chat({ userId, agentId }: { userId: string; agentId: str
     });
 
     // Load chat history
-    axios.get(`http://localhost:5000/api/messages/${userId}`).then((res) => {
+    axios.get(`http://localhost:8080/api/messages/${userId}`).then((res) => {
       setMessages(res.data);
     });
 

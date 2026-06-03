@@ -46,14 +46,14 @@ const CartItem = ({ item }: any) => {
 
   const imageUrl = product.images?.[0]?.url
     ? getCloudinaryImage(product.images[0].url, {
-        width: 250,
-        height: 250,
-      })
+      width: 250,
+      height: 250,
+    })
     : "/placeholder.png";
 
   return (
     <div className="border rounded-md p-3 flex gap-4 items-center hover:shadow-md transition bg-white">
-      
+
       {/* IMAGE */}
       <div className="w-[110px] h-[110px] flex-shrink-0">
         <Link to={`/product/${product._id}`}>
@@ -66,7 +66,7 @@ const CartItem = ({ item }: any) => {
 
       {/* INFO */}
       <div className="flex-1 relative">
-        
+
         <IoCloseSharp
           onClick={() => deleteItem(product._id)}
           className="absolute right-0 top-0 cursor-pointer text-[18px] hover:text-red-500"
@@ -82,11 +82,12 @@ const CartItem = ({ item }: any) => {
 
         <div className="flex gap-2 mt-1 text-sm items-center">
           <span className="font-bold">
-            ₹{product.finalPrice?.toFixed(2)}
+            ₹{Number(product.finalPrice || 0).toFixed(2)}
           </span>
           <span className="line-through text-gray-400 text-xs">
-            ₹{product.listedPrice?.toFixed(2)}
+            ₹{Number(product.listedPrice || 0).toFixed(2)}
           </span>
+
           <span className="text-red-500 text-xs">
             {product.discountPercentage}% OFF
           </span>
@@ -106,7 +107,7 @@ const CartItem = ({ item }: any) => {
             open={qtyOpen}
             onClose={() => handleQtyClose(null)}
           >
-            {[1,2,3,4,5,6,7,8,9,10].map((qty) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((qty) => (
               <MenuItem key={qty} onClick={() => handleQtyClose(qty)}>
                 {qty}
               </MenuItem>

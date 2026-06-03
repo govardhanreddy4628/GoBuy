@@ -35,13 +35,11 @@ export interface Agent {
   type: 'sales' | 'inventory' | 'support';
   description: string;
   icon: string;
-  color: string;
   settings: AgentSettings;
 }
 
 export interface ChatState {
   messages: Message[];
-  isLoading: boolean;
   currentAgent: Agent | null;
   chatHistories: ChatHistory[];
   currentHistoryId?: string;

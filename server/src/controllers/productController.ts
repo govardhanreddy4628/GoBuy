@@ -8,6 +8,8 @@ import couponModel from "../models/couponModel.js";
 import { inngest } from "../inngest/client.js"; // optional: only if you’re using inngest
 import { getCategoryBreadcrumb } from "../services/getBreadCrumb.js";
 import CategoryModel from "../models/categoryModel.js";
+import searchAnalytics from "../models/searchAnalyticsModel.js";
+import UserModel from "../models/userModel.js";
 
 //  or use following validation
 //     const querySchema = z.object({
@@ -181,16 +183,14 @@ export const createProduct = async (
     }
 
     if (finalPrice > listedPrice) {
-      res.status(400).json({
-        message: "Final price cannot be greater than listed price",
-      });
+      res
+        .status(400)
+        .json({ message: "Final price cannot be greater than listed price" });
       return;
     }
 
     if (finalPrice < 0 || listedPrice < 0) {
-      res.status(400).json({
-        message: "Price cannot be negative",
-      });
+      res.status(400).json({ message: "Price cannot be negative" });
       return;
     }
 
@@ -433,7 +433,7 @@ export const updateProductController = async (
     }
     product.brand = req.body.brand ?? product.brand;
     product.listedPrice = req.body.listedPrice ?? product.listedPrice;
-    product.finalPrice = req.body.finalPrice ? 0 : product.finalPrice;
+    product.finalPrice = req.body.finalPrice ?? product.finalPrice;
     product.costPerItem = req.body.costPerItem ?? product.costPerItem;
     product.quantityInStock =
       req.body.quantityInStock ?? product.quantityInStock;
@@ -721,25 +721,24 @@ export const getProductByIdandCategory = async (
         breadcrumb,
       },
     });
-  }  catch (error: unknown) {
-  if (error instanceof Error) {
-    console.error(
-      `Error fetching product ID ${req.params.productId}:`,
-      error.message
-    );
-    res.status(500).json({
-      success: false,
-      message: "A server error occurred while fetching the product.",
-    });
-  } else {
-    console.error("Unknown error:", error);
-    res.status(500).json({
-      success: false,
-      message: "An unexpected error occurred.",
-    });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error(
+        `Error fetching product ID ${req.params.productId}:`,
+        error.message,
+      );
+      res.status(500).json({
+        success: false,
+        message: "A server error occurred while fetching the product.",
+      });
+    } else {
+      console.error("Unknown error:", error);
+      res.status(500).json({
+        success: false,
+        message: "An unexpected error occurred.",
+      });
+    }
   }
-}
-
 };
 
 /**
@@ -792,7 +791,7 @@ export const getProductById = async (req: Request, res: Response) => {
     if (error instanceof Error) {
       console.error(
         `Error fetching product ID ${req.params.productId}:`,
-        error.message
+        error.message,
       );
       res.status(500).json({
         success: false,
@@ -823,6 +822,7 @@ export const getAllProductByCatIdController = async (
         success: false,
         error: true,
       });
+      return;
     }
 
     // Validate pagination
@@ -852,9 +852,22 @@ export const getAllProductByCatIdController = async (
           ? false
           : null;
 
-    // Build filter object
+    // ---------------------------------------------------
+    // STEP 1: Find child categories
+    // ---------------------------------------------------
+
+    const childCategories = await CategoryModel.find({
+      parentCategory: catId,
+    }).select("_id");
+
+    const categoryIds = [catId, ...childCategories.map((cat) => cat._id)];
+
+    // ---------------------------------------------------
+    // STEP 2: Build filter
+    // ---------------------------------------------------
+
     const filter: any = {
-      catId,
+      catId: { $in: categoryIds },
     };
 
     if (search) {
@@ -876,12 +889,14 @@ export const getAllProductByCatIdController = async (
         success: false,
         error: true,
       });
+      return;
     }
 
     // Fetch paginated products for the category
     const products = await productModel
       .find(filter)
       .populate("category")
+      .sort({ [sortBy]: sortOrder })
       .skip((page - 1) * perPage)
       .limit(perPage);
 
@@ -971,209 +986,6 @@ export const getAllProductByCatNameController = async (
     const message =
       error instanceof Error ? error.message : "Unknown server error";
     sendErrorResponse(res, 500, message);
-  }
-};
-
-// ok
-export const getAllProductBySubCatIdController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void | Response> => {
-  try {
-    const { page, perPage } = getPaginationParams(req);
-    const { subCategoryId } = req.params;
-
-    if (!subCategoryId) {
-      return sendErrorResponse(res, 400, "Missing subCategoryId");
-    }
-
-    const filter = { subCategoryId };
-    const totalProducts = await productModel.countDocuments(filter);
-    const totalPages = Math.ceil(totalProducts / perPage);
-
-    if (page > totalPages && totalPages > 0) {
-      return sendErrorResponse(res, 404, "Page not found");
-    }
-
-    const products = await productModel
-      .find(filter)
-      .populate("category")
-      .skip((page - 1) * perPage)
-      .limit(perPage);
-
-    res.status(200).json({
-      success: true,
-      error: false,
-      data: products,
-      pagination: {
-        totalProducts,
-        totalPages,
-        currentPage: page,
-        perPage,
-      },
-    });
-  } catch (error) {
-    console.error("Error in getAllProductBySubCatIdController:", error);
-    const message =
-      error instanceof Error ? error.message : "Unknown server error";
-    sendErrorResponse(res, 500, message);
-  }
-};
-
-//ok
-export const getAllProductBySubCatNameController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void | Response> => {
-  try {
-    const { page, perPage } = getPaginationParams(req);
-    const { catName } = req.params;
-
-    if (!catName) {
-      return sendErrorResponse(res, 400, "Missing catName");
-    }
-
-    const filter = { subCatName: catName };
-    const totalProducts = await productModel.countDocuments(filter);
-    const totalPages = Math.ceil(totalProducts / perPage);
-
-    if (page > totalPages && totalPages > 0) {
-      return sendErrorResponse(res, 404, "Page not found");
-    }
-
-    const products = await productModel
-      .find(filter)
-      .populate("category")
-      .skip((page - 1) * perPage)
-      .limit(perPage);
-
-    res.status(200).json({
-      success: true,
-      error: false,
-      data: products,
-      pagination: {
-        totalProducts,
-        totalPages,
-        currentPage: page,
-        perPage,
-      },
-    });
-  } catch (error) {
-    console.error("Error in getAllProductBySubCatNameController:", error);
-    const message =
-      error instanceof Error ? error.message : "Unknown server error";
-    sendErrorResponse(res, 500, message);
-  }
-};
-
-//ok
-export const getAllProductByThirdSubCatIdController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void | Response> => {
-  try {
-    const { page, perPage } = getPaginationParams(req);
-    const { id } = req.params;
-
-    if (!id) {
-      return sendErrorResponse(res, 400, "Missing thirdSubCategoryId");
-    }
-
-    const filter = { thirdSubCategoryId: id };
-    const totalProducts = await productModel.countDocuments(filter);
-    const totalPages = Math.ceil(totalProducts / perPage);
-
-    if (page > totalPages && totalPages > 0) {
-      return sendErrorResponse(res, 404, "Page not found");
-    }
-
-    const products = await productModel
-      .find(filter)
-      .populate("category")
-      .skip((page - 1) * perPage)
-      .limit(perPage);
-
-    res.status(200).json({
-      success: true,
-      error: false,
-      data: products,
-      pagination: {
-        totalProducts,
-        totalPages,
-        currentPage: page,
-        perPage,
-      },
-    });
-  } catch (error) {
-    console.error("Error in getAllProductByThirdSubCatIdController:", error);
-    const message =
-      error instanceof Error ? error.message : "Unknown server error";
-    sendErrorResponse(res, 500, message);
-  }
-};
-
-//ok
-export const getAllProductByThirdSubCatNameController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void | Response> => {
-  try {
-    const { catName } = req.params;
-    if (!catName || typeof catName !== "string") {
-      return res.status(400).json({
-        success: false,
-        error: true,
-        message: "Category name (catName) is required in params",
-      });
-    }
-
-    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
-    const perPage = Math.min(parseInt(req.query.perPage as string) || 20, 100); // limit to max 100 per page
-
-    const filter = { thirdSubCategoryName: catName };
-
-    const [totalPosts, products] = await Promise.all([
-      productModel.countDocuments(filter),
-      productModel
-        .find(filter)
-        .populate("category")
-        .skip((page - 1) * perPage)
-        .limit(perPage)
-        .lean(),
-    ]);
-
-    const totalPages = Math.ceil(totalPosts / perPage);
-
-    if (page > totalPages && totalPosts > 0) {
-      return res.status(404).json({
-        success: false,
-        error: true,
-        message: "Page not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      error: false,
-      data: products,
-      pagination: {
-        totalItems: totalPosts,
-        totalPages,
-        currentPage: page,
-        perPage,
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching products by thirdSubCategoryName:", error);
-    return res.status(500).json({
-      success: false,
-      error: true,
-      message: error instanceof Error ? error.message : "Internal server error",
-    });
   }
 };
 
@@ -1428,73 +1240,6 @@ export const getAllProductByThirdSubCatNameController = async (
 //     });
 //   }
 // };
-
-export const getAllProductByPriceController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
-  try {
-    const {
-      catId,
-      subCategoryId,
-      thirdSubCategoryId,
-      minPrice,
-      maxPrice,
-      page = "1",
-      limit = "20",
-    } = req.query;
-
-    const parsedPage = Math.max(parseInt(page as string), 1);
-    const parsedLimit = Math.min(parseInt(limit as string), 100);
-    const skip = (parsedPage - 1) * parsedLimit;
-
-    // 🧠 Build dynamic query
-    const filter: Record<string, any> = {};
-
-    if (catId) filter.catId = catId;
-    if (subCategoryId) filter.subCategoryId = subCategoryId;
-    if (thirdSubCategoryId) filter.thirdSubCategoryId = thirdSubCategoryId;
-
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = parseFloat(minPrice as string);
-      if (maxPrice) filter.price.$lte = parseFloat(maxPrice as string);
-    }
-
-    // ⚡ Query database
-    const [products, total] = await Promise.all([
-      productModel
-        .find(filter)
-        .populate("category")
-        .skip(skip)
-        .limit(parsedLimit)
-        .lean(),
-      productModel.countDocuments(filter),
-    ]);
-
-    const totalPages = Math.ceil(total / parsedLimit);
-
-    res.status(200).json({
-      success: true,
-      error: false,
-      data: products,
-      pagination: {
-        totalItems: total,
-        totalPages,
-        currentPage: parsedPage,
-        perPage: parsedLimit,
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching products by price:", error);
-    res.status(500).json({
-      success: false,
-      error: true,
-      message: error instanceof Error ? error.message : "Internal server error",
-    });
-  }
-};
 
 //ok
 export async function getProductsCount(
@@ -1838,165 +1583,66 @@ export async function removeImageFromCloudinary(
 //   }
 // };
 
-// export const checkoutController = async (req: Request, res: Response) => {
-//   try {
-//     const { productId, quantity = 1, couponCode, userId } = req.body;
+export const checkoutController = async (req: Request, res: Response) => {
+  try {
+    const { productId, quantity = 1, couponCode, userId } = req.body;
 
-//     const product = await productModel.findById(productId);
-//     if (!product) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "Product not found" });
-//     }
+    const product = await productModel.findById(productId);
+    if (!product) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
 
-//     let discountPercentage = 0;
+    let discountPercentage = 0;
 
-//     if (couponCode) {
-//       const coupon = await couponModel.findOne({
-//         code: couponCode.toUpperCase(),
-//         isActive: true,
-//       });
+    if (couponCode) {
+      const coupon = await couponModel.findOne({
+        code: couponCode.toUpperCase(),
+        isActive: true,
+      });
 
-//       if (
-//         !coupon ||
-//         coupon.expiresAt < new Date() ||
-//         coupon.usedCount >= coupon.usageLimit
-//       ) {
-//         return res
-//           .status(400)
-//           .json({ success: false, message: "Invalid or expired coupon" });
-//       }
+      if (
+        !coupon ||
+        coupon.expiresAt < new Date() ||
+        coupon.usedCount >= coupon.usageLimit
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid or expired coupon" });
+      }
 
-//       if (
-//         coupon.applicableUsers.length &&
-//         !coupon.applicableUsers.some((id) => id.toString() === userId)
-//       ) {
-//         return res
-//           .status(403)
-//           .json({ success: false, message: "Coupon not valid for user" });
-//       }
+      if (
+        coupon.applicableUsers.length &&
+        !coupon.applicableUsers.some((id) => id.toString() === userId)
+      ) {
+        return res
+          .status(403)
+          .json({ success: false, message: "Coupon not valid for user" });
+      }
 
-//       discountPercentage = coupon.discountPercentage;
-//       coupon.usedCount += 1;
-//       await coupon.save();
-//     }
+      discountPercentage = coupon.discountPercentage;
+      coupon.usedCount += 1;
+      await coupon.save();
+    }
 
-//     const totalPrice = product.finalPrice * quantity;
-//     const finalPrice = Math.round(totalPrice * (1 - discountPercentage / 100));
+    const totalPrice = product.finalPrice * quantity;
+    const finalPrice = Math.round(totalPrice * (1 - discountPercentage / 100));
 
-//     res.status(200).json({
-//       success: true,
-//       product: {
-//         name: product.name,
-//         quantity,
-//         originalPrice: product.finalPrice,
-//         discountPercentage,
-//         finalPrice,
-//       },
-//     });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: "Checkout failed" });
-//   }
-// };
-
-// export async function productFiltersController(req:Request, res:Response){
-//   const {catId, subCatId, thirdSubCatId,minPrice, maxPrice, rating, page, limit} = req.body;
-//   const filters = {}
-
-//   if(catId?.length){
-//     filters.catId = {$in: catId}
-//   }
-//   if(subCatId?.length){
-//     filters.catId = {$in: subCatId}
-//   }
-//   if(thirdSubCatId?.length){
-//     filters.catId = {$in: thirdSubCatId}
-//   }
-
-//   if(minPrice || maxPrice){
-//     filters.price = {$gte: +minPrice || 0, $lte: +maxPrice || Infinity};
-//   }
-
-//   if(rating?.length){
-//     filters.rating = {$in: rating}
-//   }
-
-//   try{
-//     const products = await ProductModel.find(filters).populate("category".skip(page - 1) * limit).limit(parseInt(limit));
-//     const total = await ProductModel.countDocuments(filters);
-//     return res.status(200).json({
-//       error:false,
-//       success:true,
-//       products:products,
-//       total:total,
-//       page:parseInt(page),
-//       totalPages:Match.ceil(total / limit)
-//     })
-//   } catch(){
-//     return  res.status(500).json({
-//       message: error.message || error,
-//       error: true,
-//       success: false
-//     })
-//   }
-
-// }
-
-// export const getProductsByCategoryController = async (
-//   req: Request,
-//   res: Response
-// ) => {
-//   try {
-//     const { categorySlug } = req.params;
-
-//     // 1️⃣ Find base category
-//     const category = await CategoryModel.findOne({
-//       slug: categorySlug,
-//       isActive: true,
-//     }).select("_id");
-
-//     if (!category) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Category not found",
-//       });
-//     }
-
-//     const categoryId = category._id;
-
-//     // 2️⃣ Find all descendant categories
-//     const descendantCategories = await CategoryModel.find({
-//       path: categoryId, // Mongo automatically treats this as $in for arrays
-//       isActive: true,
-//     }).select("_id");
-
-//     // 3️⃣ Build categoryId list
-//     const categoryIds = [
-//       categoryId,
-//       ...descendantCategories.map((cat) => cat._id),
-//     ];
-
-//     // 4️⃣ Fetch products
-//     const products = await productModel.find({
-//       category: { $in: categoryIds },
-//       isActive: true,
-//     })
-//       .populate("category", "name slug")
-//       .sort({ createdAt: -1 });
-
-//     return res.status(200).json({
-//       success: true,
-//       count: products.length,
-//       data: products,
-//     });
-//   } catch (error) {
-//     console.error("getProductsByCategory error:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal server error",
-//     });
-//   }
-// };
+    res.status(200).json({
+      success: true,
+      product: {
+        name: product.name,
+        quantity,
+        originalPrice: product.finalPrice,
+        discountPercentage,
+        finalPrice,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Checkout failed" });
+  }
+};
 
 /**
  * Recursively fetch all descendant category IDs
@@ -2019,7 +1665,10 @@ const getDescendantCategoryIds = async (
   return ids;
 };
 
-export const getProductsByCategorySlug = async (req:Request, res:Response) => {
+export const getProductsByCategorySlug = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { slug } = req.params;
 
@@ -2071,8 +1720,7 @@ export const getProductsByCategorySlug = async (req:Request, res:Response) => {
   }
 };
 
-
-export const getProductsByCategoryId = async (req:Request, res:Response) => {
+export const getProductsByCategoryId = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -2106,7 +1754,7 @@ export const getProductsByCategoryId = async (req:Request, res:Response) => {
         status: "active",
       })
       .select(
-        "name slug finalPrice listedPrice discountPercentage brand images shortDescription rating"
+        "name slug finalPrice listedPrice discountPercentage brand images shortDescription rating",
       )
       .lean();
 
@@ -2124,73 +1772,18 @@ export const getProductsByCategoryId = async (req:Request, res:Response) => {
   }
 };
 
-
-// export async function filters(request, response) {
-//   const {
-//     catId,
-//     subCatId,
-//     thirdSubCategoryId,
-//     minPrice,
-//     maxPrice,
-//     rating,
-//     page,
-//     limit,
-//   } = request.body;
-
-//   const filters = {};
-
-//   if (catId?.length) {
-//     filters.catId = { $in: catId };
-//   }
-//   if (subCatId?.length) {
-//     filters.subCatId = { $in: subCatId };
-//   }
-//   if (thirdSubCategoryId?.length) {
-//     filters.thirdSubCategoryId = { $in: thirdSubCategoryId };
-//   }
-
-//   if (minPrice || maxPrice) {
-//     filters.price = { $gte: +minPrice || 0, $lte: +maxPrice || Infinity };
-//   }
-
-//   if (rating?.length) {
-//     filters.rating = { $in: rating };
-//   }
-
-//   try {
-//     const products = await productModel
-//       .find(filters)
-//       .populate("category".skip(page - 1) * limit)
-//       .limit(parseInt(limit));
-//     const total = await productModel.countDocuments(filters);
-//     return response.status(200).json({
-//       error: false,
-//       success: true,
-//       products: products,
-//       total: total,
-//       page: parseInt(page),
-//       totalPages: Math.ceil(total / limit),
-//     });
-//   } catch (error) {
-//     return response.status(500).json({
-//       message: error.message || error,
-//       error: true,
-//       success: false,
-//     });
-//   }
-// }
-
-
-
-
 // ✅ GET TOP RATED PRODUCTS (rating >= 3)
 export const getTopRatedProducts = async (req: Request, res: Response) => {
   try {
-    const products = await productModel.find({
-      rating: { $gte: 3 },
-    })
+    const products = await productModel
+      .find({
+        rating: { $gte: 3 },
+      })
       .sort({ rating: -1 }) // highest rating first
-      .limit(20); // optional (you can remove or change)
+      .limit(20) // optional (you can remove or change)
+      .select(
+        "name slug finalPrice listedPrice discountPercentage brand images shortDescription rating",
+      );
 
     res.status(200).json({
       success: true,
@@ -2204,5 +1797,623 @@ export const getTopRatedProducts = async (req: Request, res: Response) => {
       success: false,
       message: "Failed to fetch top rated products",
     });
+  }
+};
+
+// GET /api/v1/product/products-with-best-discounts
+export const getFeaturedProducts = async (req: Request, res: Response) => {
+  try {
+    // Fetch products with discountPercentage > 30 and select only required fields
+    const products = await productModel
+      .find({
+        status: "active",
+        isFeatured: true, // only active products
+      })
+      .sort({ discountPercentage: -1 }) // highest discount first
+      .limit(20) // optional: limit number of products
+      .select(
+        "name slug finalPrice listedPrice discountPercentage brand images shortDescription rating",
+      );
+
+    return res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (err) {
+    console.error("getFeaturedProducts error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch featured products",
+    });
+  }
+};
+
+// GET /api/v1/product/products-with-best-discounts
+export const getBestDiscountProducts = async (req: Request, res: Response) => {
+  try {
+    const minDiscount = Number(req.query.minDiscount) || 30;
+
+    const products = await productModel
+      .find({
+        discountPercentage: { $gt: minDiscount },
+        status: "active", // ✅ updated field
+      })
+      .sort({ discountPercentage: -1 })
+      .limit(20)
+      .select(
+        "name slug finalPrice listedPrice discountPercentage brand images shortDescription rating",
+      );
+
+    return res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (err) {
+    console.error("getBestDiscountProducts error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch best discount products",
+    });
+  }
+};
+
+export const getRatingRange = async (req: Request, res: Response) => {
+  try {
+    const { category } = req.query;
+
+    if (!category) {
+      return res.json({
+        success: true,
+        minRating: 0,
+        maxRating: 5,
+      });
+    }
+
+    const allCategories = await CategoryModel.find()
+      .select("_id parentCategoryId")
+      .lean();
+
+    const targetId = new mongoose.Types.ObjectId(category as string);
+
+    const categoryIds: mongoose.Types.ObjectId[] = [targetId];
+
+    let added = true;
+
+    // find all child categories
+    while (added) {
+      added = false;
+
+      for (const cat of allCategories) {
+        if (
+          cat.parentCategoryId &&
+          categoryIds.some(
+            (id) => id.toString() === cat.parentCategoryId!.toString(),
+          ) &&
+          !categoryIds.some((id) => id.toString() === cat._id.toString())
+        ) {
+          categoryIds.push(cat._id);
+          added = true;
+        }
+      }
+    }
+
+    const result = await productModel.aggregate([
+      {
+        $match: {
+          category: { $in: categoryIds }, // make sure this field matches your schema
+          status: "active",
+          rating: { $exists: true },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          minRating: { $min: "$rating" },
+          maxRating: { $max: "$rating" },
+        },
+      },
+    ]);
+
+    if (!result.length) {
+      return res.json({
+        success: true,
+        minRating: 0,
+        maxRating: 0,
+      });
+    }
+
+    res.json({
+      success: true,
+      minRating: result[0].minRating,
+      maxRating: result[0].maxRating,
+    });
+  } catch (error) {
+    console.error("GET RATING RANGE ERROR:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const getBrandsByCategory = async (req: Request, res: Response) => {
+  try {
+    const { category } = req.query;
+
+    if (!category || !mongoose.Types.ObjectId.isValid(category as string)) {
+      return res.json({
+        success: true,
+        brands: [],
+      });
+    }
+
+    const allCategories = await CategoryModel.find()
+      .select("_id parentCategoryId")
+      .lean();
+
+    const targetId = new mongoose.Types.ObjectId(category as string);
+
+    const categoryIds: mongoose.Types.ObjectId[] = [targetId];
+
+    let added = true;
+
+    while (added) {
+      added = false;
+
+      for (const cat of allCategories) {
+        if (
+          cat.parentCategoryId &&
+          categoryIds.some(
+            (id) => id.toString() === cat.parentCategoryId!.toString(),
+          ) &&
+          !categoryIds.some((id) => id.toString() === cat._id.toString())
+        ) {
+          categoryIds.push(cat._id);
+          added = true;
+        }
+      }
+    }
+
+    const brands = await productModel.distinct("brand", {
+      category: { $in: categoryIds },
+      status: "active",
+    });
+
+    res.json({ success: true, brands });
+  } catch (error) {
+    console.error("GET BRANDS ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const getProducts = async (req: Request, res: Response) => {
+  try {
+    const {
+      category,
+      page = "1",
+      limit = "10",
+      minPrice,
+      maxPrice,
+      rating,
+      brands,
+      sort,
+    } = req.query;
+
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+
+    const filter: any = {
+      status: "active",
+    };
+
+    /* --------------------------------------------------
+       CATEGORY FILTER (parent + nested children)
+    -------------------------------------------------- */
+
+    if (category && mongoose.Types.ObjectId.isValid(category as string)) {
+      const allCategories = await CategoryModel.find()
+        .select("_id parentCategoryId")
+        .lean();
+
+      const targetId = new mongoose.Types.ObjectId(category as string);
+
+      const categoryIds: mongoose.Types.ObjectId[] = [targetId];
+
+      let added = true;
+
+      while (added) {
+        added = false;
+
+        for (const cat of allCategories) {
+          if (
+            cat.parentCategoryId &&
+            categoryIds.some(
+              (id) => id.toString() === cat.parentCategoryId!.toString(),
+            ) &&
+            !categoryIds.some((id) => id.toString() === cat._id.toString())
+          ) {
+            categoryIds.push(cat._id);
+            added = true;
+          }
+        }
+      }
+
+      filter.category = { $in: categoryIds };
+    }
+
+    /* --------------------------------------------------
+       BRAND FILTER
+    -------------------------------------------------- */
+
+    if (brands) {
+      const brandArray = (brands as string).split(",");
+      filter.brand = { $in: brandArray };
+    }
+
+    /* --------------------------------------------------
+       PRICE FILTER
+    -------------------------------------------------- */
+
+    if (minPrice || maxPrice) {
+      filter.finalPrice = {};
+
+      if (minPrice) filter.finalPrice.$gte = Number(minPrice);
+      if (maxPrice) filter.finalPrice.$lte = Number(maxPrice);
+    }
+
+    /* --------------------------------------------------
+       RATING FILTER
+    -------------------------------------------------- */
+
+    if (rating) {
+      const ratingArray = (rating as string)
+        .split(",")
+        .map((r) => Number(r))
+        .filter(Boolean);
+
+      if (ratingArray.length > 0) {
+        filter.rating = { $gte: Math.max(...ratingArray) };
+      }
+    }
+
+    /* --------------------------------------------------
+       SORTING
+    -------------------------------------------------- */
+
+    let sortQuery: any = { createdAt: -1 };
+
+    if (sort === "price:asc") sortQuery = { finalPrice: 1, createdAt: -1 };
+    if (sort === "price:desc") sortQuery = { finalPrice: -1, createdAt: -1 };
+
+    if (sort === "name-asc") sortQuery = { name: 1, createdAt: -1 };
+    if (sort === "name-desc") sortQuery = { name: -1, createdAt: -1 };
+
+    if (sort === "rating") {
+      sortQuery = { rating: -1, createdAt: -1 };
+      filter.rating = { $exists: true }; // optional
+    }
+
+    /* --------------------------------------------------
+       FETCH PRODUCTS
+    -------------------------------------------------- */
+
+    const total = await productModel.countDocuments(filter);
+
+    const products = await productModel
+      .find(filter)
+      .collation({ locale: "en", strength: 2 }) // 🔥 FIX
+      .populate("category", "name slug")
+      .sort(sortQuery)
+      .skip((pageNumber - 1) * pageSize)
+      .limit(pageSize)
+      .lean();
+
+    res.json({
+      success: true,
+      data: products,
+      pagination: {
+        total,
+        page: pageNumber,
+        pages: Math.ceil(total / pageSize),
+      },
+    });
+  } catch (error) {
+    console.error("GET PRODUCTS ERROR:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+const trackSearch = async (term: string) => {
+  await searchAnalytics.findOneAndUpdate(
+    { term: term.toLowerCase() },
+    { $inc: { count: 1 } },
+    { upsert: true, new: true },
+  );
+};
+
+export const advancedSearch = async (req: Request, res: Response) => {
+  const { q, type } = req.query;
+
+  if (!q) {
+    return res.json({ success: true, data: [] });
+  }
+
+  // 📊 Track search
+  await trackSearch(q);
+
+  let products = [];
+
+  // ----------------------------------------
+  // 🔹 PRODUCT EXACT MATCH (iPhone 15)
+  // ----------------------------------------
+  if (type === "product") {
+    products = await productModel
+      .find({
+        name: { $regex: `^${q}$`, $options: "i" },
+      })
+      .limit(10);
+  }
+
+  // ----------------------------------------
+  // 🔹 CATEGORY SEARCH (Headphones)
+  // ----------------------------------------
+  else if (type === "category") {
+    const category = await CategoryModel.findOne({
+      name: { $regex: q, $options: "i" },
+    });
+
+    if (category) {
+      products = await productModel
+        .find({
+          category: category._id,
+        })
+        .limit(20);
+    }
+  }
+
+  // ----------------------------------------
+  // 🔹 BRAND SEARCH (Nike Shoes)
+  // ----------------------------------------
+  else if (type === "brand") {
+    products = await productModel
+      .find({
+        brand: { $regex: q, $options: "i" },
+      })
+      .limit(20);
+  }
+
+  // ----------------------------------------
+  // 🔹 GENERAL SEARCH
+  // ----------------------------------------
+  else {
+    products = await productModel
+      .find({
+        $or: [
+          { name: { $regex: q, $options: "i" } },
+          { brand: { $regex: q, $options: "i" } },
+        ],
+      })
+      .limit(20);
+  }
+
+  res.json({
+    success: true,
+    total: products.length,
+    data: products,
+  });
+};
+
+export const smartSuggest = async (req: Request, res: Response) => {
+  const { q } = req.query;
+
+  if (!q) return res.json({ success: true, data: {} });
+
+  const products = await productModel
+    .find({
+      name: { $regex: q, $options: "i" },
+    })
+    .limit(5);
+
+  const categories = await CategoryModel.find({
+    name: { $regex: q, $options: "i" },
+  }).limit(5);
+
+  const brands = await productModel.aggregate([
+    {
+      $match: {
+        brand: { $regex: q, $options: "i" },
+      },
+    },
+    {
+      $group: {
+        _id: "$brand",
+      },
+    },
+    { $limit: 5 },
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      products,
+      categories,
+      brands: brands.map((b) => b._id),
+    },
+  });
+};
+
+// POST /api/v1/user/recently-viewed/:productId
+export const addRecentlyViewed = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    const { productId } = req.params;
+
+    if (!userId) {
+      return res.status(200).json({ success: true });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product id",
+      });
+    }
+
+    const productObjectId = new mongoose.Types.ObjectId(productId);
+
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    let list: mongoose.Types.ObjectId[] = user.recentlyViewed || [];
+
+    // remove duplicate
+    list = list.filter((id) => id.toString() !== productObjectId.toString());
+
+    // add to top
+    list.unshift(productObjectId);
+
+    if (list.length > 10) {
+      list = list.slice(0, 10);
+    }
+
+    user.recentlyViewed = list;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Product added to recently viewed",
+    });
+  } catch (error) {
+    console.error("addRecentlyViewed error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update recently viewed",
+    });
+  }
+};
+
+// GET /api/v1/user/recently-viewed
+// GET /api/v1/product/recently-viewed
+export const getRecentlyViewedProducts = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = req.user?._id;
+
+    // ✅ guest user support (important for your slider)
+    if (!userId) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
+    }
+
+    const user = await UserModel.findById(userId).select("recentlyViewed");
+
+    if (!user || !user.recentlyViewed?.length) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
+    }
+
+    // ✅ fetch products
+    const products = (await productModel
+      .find({
+        _id: { $in: user.recentlyViewed },
+        status: "active",
+      })
+      .select(
+        "name slug finalPrice listedPrice discountPercentage brand images shortDescription rating",
+      )) as IProduct[];
+
+    // ✅ maintain order (MOST IMPORTANT)
+    const orderedProducts = user.recentlyViewed
+      .map((id) =>
+        //products.find((p) => p._id.toString() === id.toString())
+        // or
+        products.find((p) => p._id.equals(id)),
+      )
+      .filter(Boolean);
+
+    return res.status(200).json({
+      success: true,
+      data: orderedProducts,
+    });
+  } catch (error) {
+    console.error("getRecentlyViewedProducts error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch recently viewed products",
+    });
+  }
+};
+
+// POST /api/v1/product/get-products-by-ids
+export const getProductsByIds = async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+
+    const products = await productModel.find({
+      _id: { $in: ids },
+      status: "active",
+    });
+
+    res.json({
+      success: true,
+      data: products,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+};
+
+export const mergeRecentlyViewed = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    const { ids } = req.body;
+
+    if (!userId || !ids?.length) {
+      return res.status(200).json({ success: true });
+    }
+
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ success: false });
+    }
+
+    let existing = user.recentlyViewed || [];
+
+    // remove duplicates
+    const merged = [
+      ...ids,
+      ...existing.filter((id: any) => !ids.includes(id.toString())),
+    ];
+
+    user.recentlyViewed = merged.slice(0, 10);
+
+    await user.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
   }
 };

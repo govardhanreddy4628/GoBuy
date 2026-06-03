@@ -51,5 +51,6 @@ const multerUpload = multer({
 
 const uploadSingle = multerUpload.single("image");
 const uploadMultiple = multerUpload.array("images", MAX_FILES);
+const uploadMultipleMedia = multerUpload.array("media", MAX_FILES);
 
-export { uploadSingle, uploadMultiple };
+export { uploadSingle, uploadMultiple, uploadMultipleMedia };

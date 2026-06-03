@@ -1,43 +1,28 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IWishlist extends Document {
   productId: mongoose.Types.ObjectId;
-  quantity: number;
   userId: mongoose.Types.ObjectId;
-  size?: unknown; // Mixed can be unknown or any
-  color?: unknown;
+  size?: string;
+  color?: string;
 }
 
-
-const cartSchema = new Schema<IWishlist>(
+const wishlistSchema = new Schema<IWishlist>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-    quantity: { type: Number, required: true },
-    //   items: [{ productId: { type: mongoose.Types.ObjectId, ref: "Product" }, qty: Number }],
-    size: { type: Schema.Types.Mixed },
-    color: { type: Schema.Types.Mixed },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+    size: { type: String },
+    color: { type: String },
   },
-  { timestamps: true } // ✅ corrected spelling
+  { timestamps: true }
 );
 
-// Virtual field
-cartSchema.virtual('id').get(function (this: IWishlist) {
-  return (this._id as mongoose.Types.ObjectId).toHexString();
-});
+// 🔥 prevent duplicates
+wishlistSchema.index({ userId: 1, productId: 1 }, { unique: true });
 
-// Transform JSON output
-cartSchema.set('toJSON', {
-  virtuals: true,
-  versionKey: false,
-  transform: function (_doc, ret) {
-    delete ret._id;
-  },
-});
+const WishlistModel: Model<IWishlist> = mongoose.model<IWishlist>(
+  "Wishlist",
+  wishlistSchema
+);
 
-const CartModel: Model<IWishlist> = mongoose.model<IWishlist>('Wishlist', cartSchema);
-
-export default CartModel;
-
-
-
+export default WishlistModel;

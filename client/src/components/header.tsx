@@ -18,6 +18,13 @@ import { accountMenu } from '../data/accountMenu';
 import { useCart } from '../context/cartContext';
 import { useWishlist } from '../context/wishlistContext'; // ✅ new
 import { useCategories } from './admin/context/categoryContext';
+import { IoSearch } from "react-icons/io5";
+import { TypeAnimation } from 'react-type-animation';
+import { FaArrowLeft } from "react-icons/fa";
+import Search from './search';
+import SmartSearch from './smartSearch';
+import SearchBar from './smartSearch';
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 
 const HIDDEN_SLUGS = ["miscellaneous"];
 interface Category {
@@ -93,16 +100,17 @@ const categories: Category[] = [
 
 
 const Header = () => {
+    const [searchValue, setSearchValue] = useState("");
+    const [isFocused, setIsFocused] = useState(false);
     const [open, setOpen] = useState(false);
     const [anchor, setAnchor] = useState<'left' | 'right'>('left');
     const [accanchorEl, setAccAnchorEl] = useState<null | HTMLElement>(null);
+    const [loginHover, setLoginHover] = useState(false);
 
     const { getCartCount } = useCart();
     const { wishlist } = useWishlist(); // assuming your context exposes `wishlist` array
     const { user, logout } = useAuth();
 
-
-    console.log(user)
     const { categories, loading } = useCategories();
 
     const visibleCategories = categories.filter(
@@ -119,8 +127,6 @@ const Header = () => {
     const handleClose = () => {
         setAccAnchorEl(null);
     };
-
-    console.log(user)
 
     const toggleDrawer = (newOpen: boolean, side: 'left' | 'right' = "left") => {
         setOpen(newOpen);
@@ -168,36 +174,132 @@ const Header = () => {
             <section className='row2 bg-background  border-b border-b-border border-solid'>
                 <div className='flex justify-between items-center p-2.5 w-[95%] mx-auto '>
                     <div className='col1 w-[30%]'><img src="https://serviceapi.spicezgold.com/download/1744255975457_logo.jpg" /></div>
-                    <div className='col2 w-[40%] bg-slate-300 rounded-[8px] lg:flex items-center justify-between overflow-hidden hidden'>
-                        <TextField variant='outlined' size='small' type="text" className='searchBox border-none text-[35px] w-[90%] focus:outline-none !py-1' placeholder='Search for Product' />
+
+                    {/* <div className='col2 w-[40%] bg-slate-300 rounded-[8px] lg:flex items-center justify-between overflow-hidden hidden relative'>
+                        {!searchValue && !isFocused && (
+                            <div className="absolute left-3 text-gray-500 pointer-events-none">
+                                <TypeAnimation
+                                    sequence={[
+                                        'Search for "fashion"',
+                                        1000,
+                                        'Search for "electronics"',
+                                        1000,
+                                        'Search for "groceries"',
+                                        1000,
+                                        'Search for "footwear"',
+                                        1000,
+                                        'Search for "wellness"',
+                                        1000,
+                                        'Search for "bags"',
+                                        1000,
+                                        'Search for "beauty"',
+                                        1000,
+                                        'Search for "jewellery"',
+                                        1000,
+                                    ]}
+                                    wrapper="span"
+                                    speed={50}
+                                    repeat={Infinity}
+                                />
+                            </div>
+                        )}
+
+                        <TextField
+                            variant='outlined'
+                            size='small'
+                            type="text"
+                            value={searchValue}
+                            onChange={(e) => setSearchValue(e.target.value)}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
+                            className='searchBox border-none text-[35px] w-[90%] focus:outline-none !py-1'
+                            placeholder=""
+                            InputProps={{
+                                sx: {
+                                    background: "transparent",
+                                    "& fieldset": { border: "none" },
+                                    "& input": { padding: "10px 12px" },
+                                },
+                            }}
+                        />
+
                         <div className='w-[10%] flex items-center justify-center'>
-                            <IconButton aria-label="search" className='!text-red' >
+                            <IconButton aria-label="search" className='!text-red'>
                                 <SearchIcon className='!text-[28px]' />
                             </IconButton>
                         </div>
-                    </div>
+                    </div> */}
+
+                    <SearchBar />
+
                     <div className='col3 w-[30%] flex justify-center p-4 items-center'>
                         <div className='flex items-center justify-end w-full gap-4'>
                             {!user ? (
-                                <ul className="flex items-center gap-4">
-                                    <li className="list-none">
-                                        <Link
-                                            to="/login"
-                                            className="hover:text-red-500 text-[16px] font-[500] transition"
-                                        >
-                                            Login
-                                        </Link>
-                                    </li>
-                                    |
-                                    <li className="list-none">
-                                        <Link
-                                            to="/signup"
-                                            className="hover:text-red-500 text-[16px] font-[500] transition"
-                                        >
-                                            Signup
-                                        </Link>
-                                    </li>
-                                </ul>
+                                <div className="relative group">
+
+                                    {/* LOGIN BUTTON */}
+                                    <Button
+                                        variant="contained"
+                                        onClick={() => navigate("/login")}
+                                        className="!bg-red-500 hover:!bg-red-600 !text-white !font-semibold !px-5 !py-2 !rounded-md flex items-center gap-2 normal-case cursor-pointer"
+                                    >
+                                        <PersonOutlineIcon className="!w-5 !h-5 !text-white" />
+                                        Login
+                                    </Button>
+
+                                    {/* DROPDOWN */}
+                                    <div className="absolute right-0 top-[48px] w-[230px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
+
+                                        <div className="flex flex-col py-2 text-gray-800 dark:text-gray-200">
+
+                                            {/* SIGNUP HEADER */}
+                                            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                                                    New Customer?
+                                                </span>
+
+                                                <Link
+                                                    to="/signup"
+                                                    className="text-sm font-semibold text-red-500 hover:underline cursor-pointer"
+                                                >
+                                                    Sign Up
+                                                </Link>
+                                            </div>
+
+                                            {/* MENU ITEMS */}
+
+                                            <Link
+                                                to="/login"
+                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm cursor-pointer"
+                                            >
+                                                My Profile
+                                            </Link>
+
+                                            <Link
+                                                to="/login"
+                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm cursor-pointer"
+                                            >
+                                                Orders
+                                            </Link>
+
+                                            <Link
+                                                to="/login"
+                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm cursor-pointer"
+                                            >
+                                                Wishlist
+                                            </Link>
+
+                                            <Link
+                                                to="/login"
+                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm cursor-pointer"
+                                            >
+                                                Rewards
+                                            </Link>
+
+                                        </div>
+                                    </div>
+
+                                </div>
                             ) : (
                                 <>
                                     {/* Avatar / Initial */}
@@ -235,51 +337,48 @@ const Header = () => {
                                         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
                                         slotProps={{
                                             paper: {
-                                                elevation: 0,
+                                                elevation: 6,
                                                 sx: {
-                                                    overflow: "visible",
-                                                    filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                                                    overflow: "hidden",
                                                     mt: 1.5,
-                                                    minWidth: 180,
-                                                    "&::before": {
-                                                        content: '""',
-                                                        display: "block",
-                                                        position: "absolute",
-                                                        top: 0,
-                                                        right: 14,
-                                                        width: 10,
-                                                        height: 10,
-                                                        bgcolor: "background.paper",
-                                                        transform: "translateY(-50%) rotate(45deg)",
-                                                        zIndex: 0,
-                                                    },
+                                                    minWidth: 220,
+                                                    borderRadius: "12px",
+                                                    boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                                                    bgcolor: "background.paper",
+                                                    border: "1px solid",
+                                                    borderColor: "divider",
                                                 },
                                             },
                                         }}
                                     >
-                                        <div className="flex flex-col py-2 px-2">
+                                        <div className="flex flex-col py-2">
+
+                                            {/* USER INFO */}
+                                            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                                <p className="text-sm font-semibold">{user?.email}</p>
+                                                <p className="text-xs text-gray-500">Welcome back 👋</p>
+                                            </div>
+
+                                            {/* MENU ITEMS */}
                                             {accountMenu.map((item) => (
-                                                <Button
+                                                <Link
                                                     key={item.id}
-                                                    className="!flex gap-3 !justify-start hover:bg-gray-100 p-2 rounded-sm"
+                                                    to={`/myaccount/${item.path}`}
+                                                    className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                                                 >
-                                                    <Link
-                                                        to={`/myaccount/${item.path}`}
-                                                        className="flex items-center gap-3"
-                                                    >
-                                                        {item.icon}
-                                                        <span>{item.label}</span>
-                                                    </Link>
-                                                </Button>
+                                                    <span className="text-lg">{item.icon}</span>
+                                                    <span className="text-sm font-medium">{item.label}</span>
+                                                </Link>
                                             ))}
 
-                                            <Button
-                                                className="!flex gap-3 hover:bg-gray-100 p-2 rounded-sm justify-start"
+                                            {/* LOGOUT */}
+                                            <button
                                                 onClick={handleLogout}
+                                                className="flex items-center gap-3 px-4 py-2 mt-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                                             >
                                                 <FiLogOut />
-                                                <span>Logout</span>
-                                            </Button>
+                                                Logout
+                                            </button>
                                         </div>
                                     </Menu>
                                 </>
@@ -287,19 +386,16 @@ const Header = () => {
 
 
                             <IconButton aria-label="favorite">
-                                <Badge badgeContent={wishlist.length || 0} color="success">
-                                    <FavoriteBorderIcon className='!w-5 lg:!w-6 !h-5 lg:!h-6 text-muted-foreground' />
-                                </Badge>
+                                <Link to="/wishlist">
+                                    <Badge badgeContent={wishlist.length || 0} color="warning">
+                                        <FavoriteBorderIcon className='!w-5 lg:!w-6 !h-5 lg:!h-6 text-muted-foreground' />
+                                    </Badge>
+                                </Link>
                             </IconButton>
-                            {/* or */}
-                            {/* <IconButton aria-label="favorite" onClick={() => toggleDrawer(true, "left")}>
-                                <Badge badgeContent={wishlist.length} color="success">
-                                    <FavoriteBorderIcon className='!w-5 lg:!w-6 !h-5 lg:!h-6 text-muted-foreground' />
-                                </Badge>
-                            </IconButton> */}
+
 
                             <IconButton aria-label="cart" onClick={() => toggleDrawer(true, "right")}>
-                                <Badge badgeContent={getCartCount} color="primary">
+                                <Badge badgeContent={getCartCount} color="warning">
                                     <ShoppingCartCheckoutIcon className='!w-5 lg:!w-6 !h-5 lg:!h-6 text-muted-foreground' />
                                 </Badge>
                             </IconButton>

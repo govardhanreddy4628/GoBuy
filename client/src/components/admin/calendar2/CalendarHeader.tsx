@@ -2,6 +2,8 @@ import React, { useContext, useState } from "react";
 import { CalendarContext } from "./calendarContext";
 import { FaCaretDown } from "react-icons/fa";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
+import { Calendar as CalendarIcon } from 'lucide-react';
+
 
 const CalendarHeader: React.FC = () => {
   const [openDurationDropdown, setOpenDurationDropdown] = useState(false);
@@ -51,6 +53,7 @@ const CalendarHeader: React.FC = () => {
             className="capitalize text-primary flex items-center justify-between gap-2 px-4 py-2 mr-5 border border-gray-900 rounded-lg shadow-sm hover:bg-gray-100 transition duration-150"
             onClick={resetToToday}
           >
+            <CalendarIcon className="w-4 h-4" />
             Today
           </button>
 

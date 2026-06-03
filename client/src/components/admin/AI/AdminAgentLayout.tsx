@@ -1,117 +1,191 @@
-import { useState } from 'react';
-import { Agent, ChatState, Message, ChatHistory, AgentSettings } from '../types/Agent';
+import { useEffect, useState } from 'react';
+import { Agent, Message, ChatHistory, AgentSettings, ChatState, } from '../types/Agent';
 import { AgentSidebar } from './AgentSidebar';
 import { AgentChat } from './AgentChat';
 import { useToast } from '../../../hooks/use-toast';
-
-// Mock agents data
-const mockAgents: Agent[] = [
-  {
-    id: 'sales-agent',
-    name: 'Sales Agent',
-    type: 'sales',
-    description: 'Analytics, forecasting, and sales insights',
-    icon: '📊',
-    color: 'agent-sales',
-    settings: {
-      temperature: 0.7,
-      maxTokens: 1000,
-      systemPrompt: 'You are a helpful sales analytics AI assistant.',
-      enableFileUpload: true,
-      enableHistory: true
-    }
-  },
-  {
-    id: 'inventory-agent',
-    name: 'Inventory Agent',
-    type: 'inventory',
-    description: 'Stock management and supply chain insights',
-    icon: '📦',
-    color: 'agent-inventory',
-    settings: {
-      temperature: 0.5,
-      maxTokens: 1000,
-      systemPrompt: 'You are a helpful inventory management AI assistant.',
-      enableFileUpload: true,
-      enableHistory: true
-    }
-  },
-  {
-    id: 'support-agent',
-    name: 'Support Agent',
-    type: 'support',
-    description: 'Customer service and support analytics',
-    icon: '🎧',
-    color: 'agent-support',
-    settings: {
-      temperature: 0.8,
-      maxTokens: 1000,
-      systemPrompt: 'You are a helpful customer support AI assistant.',
-      enableFileUpload: true,
-      enableHistory: true
-    }
-  }
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { GET, POST, PUT } from '../../../api/api_utility';
 
 export function AdminAgentLayout() {
   const { toast } = useToast();
-  // Store messages per agent to preserve chat data when switching
-  const [agentMessages, setAgentMessages] = useState<Record<string, Message[]>>({});
-  const [chatState, setChatState] = useState<ChatState>({
-    messages: [],
-    isLoading: false,
-    currentAgent: mockAgents[0], // Default to sales agent
-    chatHistories: [],
-    currentHistoryId: undefined
+  const queryClient = useQueryClient();
+
+  const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [chatHistories, setChatHistories] = useState<ChatHistory[]>([]);
+  const [currentHistoryId, setCurrentHistoryId] = useState<string | undefined>();
+
+  const [messageRatings, setMessageRatings] = useState<Record<string, 'like' | 'dislike' | undefined>>({});
+
+  const { data: agents = [] } = useQuery<Agent[]>({
+    queryKey: ["agents"],
+    queryFn: async () => {
+      const res = await GET<Agent[]>("/api/v1/agents");
+      console.log("Fetched agents:", res)
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5, // ✅ cache 5 min
+    refetchOnWindowFocus: false,
+    retry: false
   });
 
-  const handleAgentSelect = (agent: Agent) => {
-    // Save current agent's messages
-    if (chatState.currentAgent && chatState.messages.length > 0) {
-      setAgentMessages(prev => ({
-        ...prev,
-        [chatState.currentAgent!.id]: chatState.messages
-      }));
-    }
 
-    // Load messages for the new agent
-    const agentSpecificMessages = agentMessages[agent.id] || [];
-    
-    setChatState(prev => ({
-      ...prev,
-      currentAgent: agent,
-      messages: agentSpecificMessages, // Load agent-specific messages
-      currentHistoryId: undefined
-    }));
+  // ✅ Set default agent
+  useEffect(() => {
+    if (agents.length && !currentAgent) {
+      setCurrentAgent(agents[0]);
+    }
+  }, [agents, currentAgent]);
+
+
+
+  // ✅ Fetch chats (sidebar)
+  const { data: chats = [] } = useQuery({
+    queryKey: ["chats", currentAgent?.id],
+    queryFn: async () => {
+      if (!currentAgent) return [];
+      return (await GET(`/api/v1/agents/${currentAgent.id}/chats`)).data;
+    },
+    enabled: !!currentAgent
+  });
+
+
+  // ✅ Fetch messages of selected chat
+  const { data: messagesData = [] } = useQuery<Message[]>({
+    queryKey: ["messages", currentConversationId],
+    queryFn: async () => {
+      if (!currentConversationId) return [];
+      const res = await GET(`/api/v1/agents/chat/${currentConversationId}`);
+      return res.data.map((m: any) => ({
+        id: m._id,
+        role: m.role,
+        rating: m.rating,
+        content: m.content,
+        timestamp: new Date(m.createdAt),
+      }));
+    },
+    enabled: !!currentConversationId
+  });
+
+
+  // ✅ Sync messages
+  useEffect(() => {
+    if (!currentConversationId) return;
+
+    setMessages(prev => {
+      const same =
+        prev.length === messagesData.length &&
+        prev.every((m, i) => m.id === messagesData[i]?.id && m.content === messagesData[i]?.content);
+
+      return same ? prev : messagesData;
+    });
+  }, [messagesData, currentConversationId]);
+
+  const createChatMutation = useMutation({
+    mutationFn: async (agentId: string) => {
+      const res = await POST("/api/v1/agents/new-chat", { agentId });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setCurrentConversationId(data._id);
+      queryClient.invalidateQueries({ queryKey: ["chats", currentAgent?.id] });
+    }
+  });
+
+  // ✅ Send message
+  const sendMessageMutation = useMutation({
+    mutationFn: async (payload: { message: string; conversationId: string }) => {
+      return await POST('/api/v1/agents/chat', {
+        agentId: currentAgent!.id,
+        conversationId: payload.conversationId,
+        message: payload.message
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["messages", currentConversationId] });
+    }
+  });
+
+
+  // ✅ Update settings (FULLY DYNAMIC)
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (settings: AgentSettings) => {
+      return await PUT(`/api/v1/agents/${currentAgent!.id}/settings`, settings);
+    },
+    onSuccess: (res) => {
+      const updatedAgent = res.data;
+
+      // ✅ Update current agent
+      setCurrentAgent(updatedAgent);
+
+      // ✅ Update agents cache properly
+      queryClient.setQueryData<Agent[]>(["agents"], (oldAgents) => {
+        if (!oldAgents) return [];
+
+        return oldAgents.map(agent =>
+          agent.id === updatedAgent.id ? updatedAgent : agent
+        );
+      });
+
+      toast({ description: "Agent settings updated" });
+    }
+  });
+
+
+  // ✅ Handlers
+  const handleAgentSelect = async (agent: Agent) => {
+  setCurrentAgent(agent);
+  setMessages([]);
+
+  await createChatMutation.mutateAsync(agent.id);
+};
+
+  const handleNewChat = () => {
+    if (!currentAgent) return;
+    createChatMutation.mutate(currentAgent.id);
   };
 
+  const handleSelectChat = (chatId: string) => {
+    setCurrentConversationId(chatId);
+  };
+
+
+  const handleSettingsUpdate = (settings: AgentSettings) => {
+    if (!currentAgent) return;
+
+    // optimistic UI
+    setCurrentAgent(prev => prev ? { ...prev, settings } : prev);
+
+    updateSettingsMutation.mutate(settings);
+  };
+
+
   const saveCurrentChatToHistory = () => {
-    if (!chatState.currentAgent || chatState.messages.length === 0) return;
+    if (!currentAgent || messagesData.length === 0) return;
 
     const newHistory: ChatHistory = {
       id: Date.now().toString(),
-      agentId: chatState.currentAgent.id,
-      agentName: chatState.currentAgent.name,
-      messages: [...chatState.messages],
+      agentId: currentAgent.id,
+      agentName: currentAgent.name,
+      messages,
       createdAt: new Date(),
       lastUpdated: new Date()
     };
 
-    setChatState(prev => ({
-      ...prev,
-      chatHistories: [newHistory, ...prev.chatHistories]
-    }));
+    setChatHistories(prev => [newHistory, ...prev]);
+
+    toast({ description: "Chat saved to history" });
   };
 
   const handleLoadHistory = (historyId: string) => {
-    const history = chatState.chatHistories.find(h => h.id === historyId);
+    const history = chatHistories.find(h => h.id === historyId);
     if (!history) return;
 
-    setChatState(prev => ({
-      ...prev,
-      messages: [...history.messages],
-      currentHistoryId: historyId
-    }));
+    setMessages(history.messages);
+    setCurrentHistoryId(historyId);
 
     toast({
       description: `Loaded chat history from ${new Intl.DateTimeFormat('en-US', {
@@ -124,96 +198,78 @@ export function AdminAgentLayout() {
   };
 
   const handleDeleteHistory = (historyId: string) => {
-    setChatState(prev => ({
-      ...prev,
-      chatHistories: prev.chatHistories.filter(h => h.id !== historyId),
-      currentHistoryId: prev.currentHistoryId === historyId ? undefined : prev.currentHistoryId
-    }));
+    setChatHistories(prev => prev.filter(h => h.id !== historyId));
+    if (currentHistoryId === historyId) setCurrentHistoryId(undefined);
 
-    toast({
-      description: 'Chat history deleted',
-    });
+    toast({ description: "Chat history deleted" });
   };
 
-  const handleNewChat = () => {
-    // Save current chat to history if it has messages
-    if (chatState.messages.length > 0) {
-      saveCurrentChatToHistory();
-    }
-
-    setChatState(prev => ({
-      ...prev,
-      messages: [],
-      currentHistoryId: undefined
-    }));
-  };
 
   const handleExportHistory = (historyId: string) => {
-    const history = chatState.chatHistories.find(h => h.id === historyId);
+    const history = chatHistories.find(h => h.id === historyId);
     if (!history) return;
 
-    const exportData = {
-      agent: history.agentName,
-      date: history.createdAt.toISOString(),
-      messages: history.messages.map(m => ({
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp.toISOString()
-      }))
-    };
+    // const exportData = {
+    //   agent: history.agentName,
+    //   date: history.createdAt.toISOString(),
+    //   messages: history.messages.map(m => ({
+    //     role: m.role,
+    //     content: m.content,
+    //     timestamp: m.timestamp.toISOString(),
+    //     rating: m.rating
+    //   }))
+    // };
+    // const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `chat-history-${history.agentName}-${history.createdAt.toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
+    //document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    //document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    toast({
-      description: 'Chat history exported successfully',
-    });
+    toast({ description: 'Chat history exported successfully' });
   };
 
-  const handleSettingsUpdate = (settings: AgentSettings) => {
-    if (!chatState.currentAgent) return;
+  //   setChatState(prev => ({
+  //     ...prev,
+  //     messages: updatedMessages
+  //   }));
 
-    const updatedAgent = { ...chatState.currentAgent, settings };
-    setChatState(prev => ({
-      ...prev,
-      currentAgent: updatedAgent
-    }));
-
-    toast({
-      description: 'Agent settings updated',
-    });
-  };
+  //   // Update agent-specific messages with rating
+  //   if (currentAgent) {
+  //     setAgentMessages(prev => ({
+  //       ...prev,
+  //       [currentAgent!.id]: updatedMessages
+  //     }));
+  //   }
+  // };
 
   const handleRateMessage = (messageId: string, rating: 'like' | 'dislike') => {
-    const updatedMessages = chatState.messages.map(msg =>
-      msg.id === messageId 
-        ? { ...msg, rating: msg.rating === rating ? undefined : rating }
-        : msg
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, rating: msg.rating === rating ? undefined : rating }
+          : msg
+      )
     );
-
-    setChatState(prev => ({
-      ...prev,
-      messages: updatedMessages
-    }));
-
-    // Update agent-specific messages with rating
-    if (chatState.currentAgent) {
-      setAgentMessages(prev => ({
-        ...prev,
-        [chatState.currentAgent!.id]: updatedMessages
-      }));
-    }
   };
 
   const handleSendMessage = async (content: string, fileAttachment?: any) => {
-    if (!chatState.currentAgent) return;
+    if (!currentAgent) return;
+
+    let convoId = currentConversationId;
+
+    // create chat if not exists
+    if (!convoId) {
+      const chat = await createChatMutation.mutateAsync(currentAgent.id);
+      convoId = chat._id;
+      setCurrentConversationId(convoId);
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -223,65 +279,53 @@ export function AdminAgentLayout() {
       fileAttachment
     };
 
-    const newMessages = [...chatState.messages, userMessage];
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
 
-    // Add user message and set loading
-    setChatState(prev => ({
-      ...prev,
-      messages: newMessages,
-      isLoading: true
-    }));
+    try {
+      const res = await sendMessageMutation.mutateAsync({ message: content, conversationId: convoId! });
 
-    // Update agent-specific messages
-    setAgentMessages(prev => ({
-      ...prev,
-      [chatState.currentAgent!.id]: newMessages
-    }));
-
-    // Simulate AI response
-    setTimeout(() => {
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,
-        content: getAgentResponse(chatState.currentAgent, content),
+        content: res.data.response,
         timestamp: new Date()
       };
+      setMessages(prev => [...prev, assistantMessage]);
 
-      const finalMessages = [...newMessages, assistantMessage];
-
-      setChatState(prev => ({
-        ...prev,
-        messages: finalMessages,
-        isLoading: false
-      }));
-
-      // Update agent-specific messages with AI response
-      setAgentMessages(prev => ({
-        ...prev,
-        [chatState.currentAgent!.id]: finalMessages
-      }));
-    }, 1000 + Math.random() * 2000); // Random delay 1-3 seconds
+    } catch (err) {
+      console.error(err);
+      toast({
+        description: "Failed to send message",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+
   return (
-    <div className="h-[calc(100vh-4.2rem)] flex bg-background">  
+    <div className="h-[calc(100vh-4.2rem)] flex bg-background">
       <AgentSidebar
-        agents={mockAgents}
-        selectedAgent={chatState.currentAgent}
+        agents={agents}
+        selectedAgent={currentAgent}
+        chats={chats}
+        onSelectChat={handleSelectChat}
         onAgentSelect={handleAgentSelect}
-        chatHistories={chatState.chatHistories}
-        currentHistoryId={chatState.currentHistoryId}
+        onNewChat={handleNewChat}
+        chatHistories={chatHistories}
+        currentHistoryId={currentHistoryId}
         onLoadHistory={handleLoadHistory}
         onDeleteHistory={handleDeleteHistory}
-        onNewChat={handleNewChat}
         onExportHistory={handleExportHistory}
         onSettingsUpdate={handleSettingsUpdate}
       />
       <div className="flex-1 flex flex-col min-w-0">
         <AgentChat
-          agent={chatState.currentAgent}
-          messages={chatState.messages}
-          isLoading={chatState.isLoading}
+          agent={currentAgent}
+          messages={messages}
+          isLoading={isLoading}
           onSendMessage={handleSendMessage}
           onRateMessage={handleRateMessage}
         />

@@ -1,128 +1,199 @@
-import * as React from 'react';
-import Box from '@mui/material/Box';
-import Collapse from '@mui/material/Collapse';
-import IconButton from '@mui/material/IconButton';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-//import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import TablePagination from '@mui/material/TablePagination';
+import * as React from "react";
+import {
+  Box,
+  Collapse,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TablePagination,
+  Chip,
+} from "@mui/material";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import api from "../../api/api_utility";
+import { useAuth } from "../../context/authContext";
 
+/* ================= INTERFACES ================= */
 
-function createData(
-  orderId: string,
-  paymentId: string,
-  name: string,
-  phoneNumber: number,
-  address: string,
-  pincode: string,
-  totalAmount: number,
-  email: string,
-  userId: string,
-  orderStatus: string,
-  date: string
-) {
-  return {
-    orderId,
-    paymentId,
-    name,
-    phoneNumber,
-    address,
-    pincode,
-    totalAmount,
-    email,
-    userId,
-    orderStatus,
-    date,
-    history: [
-      {
-        productId: '2020-01-05',
-        productTitle: '11091700',
-        image: "https://th.bing.com/th/id/OIP.Qtd1vbWR1O9mFYIIcGmdTwHaHa?w=151&h=181&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3",
-        quantity: 3,
-
-      },
-      {
-        productId: '2020-01-02',
-        productTitle: 'Anonymous',
-        image: "https://th.bing.com/th/id/OIP.Qtd1vbWR1O9mFYIIcGmdTwHaHa?w=151&h=181&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3",
-        quantity: 1,
-
-      },
-    ],
-  };
+interface OrderItem {
+  _id: string;
+  productId: string;
+  name: string;
+  image: string;
+  price: number;
+  quantity: number;
+  color?: string | null;
+  size?: string | null;
 }
 
-function Row(props: { row: ReturnType<typeof createData> }) {
-  const { row } = props;
-  const [open, setOpen] = React.useState(false);
+interface Order {
+  _id: string;
+  orderId: string;
+  userId: string;
+  totalAmount: number;
+  currency: string;
+  paymentStatus: string;
+  orderStatus: string;
+  deliveryStatus: string;
+  totalItems: number;
+  createdAt: string;
+  shippingAddress: {
+    fullName: string;
+    email: string;
+    mobile: string;
+    houseNumber?: string;
+    address_line: string;
+    landmark?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country: string;
+  };
+  items: OrderItem[];
+}
 
-  const getStatusColor = (status) => {
-    const classes = {
-      Shipped: 'bg-blue-100 text-blue-700',
-      Pending: 'bg-yellow-100 text-yellow-700',
-      Delivered: 'bg-green-100 text-green-700',
-    };
-    return classes[status] || 'bg-gray-100 text-gray-700';
+/* ================= STATUS CHIP ================= */
+
+const StatusChip = ({ status }: { status: string }) => {
+  const colorMap: Record<string, any> = {
+    placed: "info",
+    pending: "warning",
+    delivered: "success",
+    cancelled: "error",
   };
 
+  return (
+    <Chip
+      label={status}
+      size="small"
+      color={colorMap[status?.toLowerCase()] || "default"}
+      sx={{ fontWeight: 600, textTransform: "capitalize" }}
+    />
+  );
+};
+
+/* ================= ROW COMPONENT ================= */
+
+function Row({ row }: { row: Order }) {
+  const [open, setOpen] = React.useState(false);
 
   return (
-    <React.Fragment>
-      <TableRow sx={{ '& > *': { borderBottom: 'unset' } }} className=" dark:bg-gray-800">
+    <>
+      <TableRow
+        hover
+        sx={{
+          transition: "0.3s",
+          "&:hover": {
+            backgroundColor: "rgba(0,0,0,0.03)",
+          },
+        }}
+      >
         <TableCell>
-          <IconButton aria-label="expand row" size="small" onClick={() => setOpen(!open)}>
-            {open ? <KeyboardArrowUpIcon className='dark:text-white' /> : <KeyboardArrowDownIcon className='dark:text-white' />}
+          <IconButton size="small" onClick={() => setOpen(!open)}>
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell component="th" scope="row" className='text-nowrap dark:text-white'>{row.orderId}</TableCell>
-        <TableCell align="right" className='text-nowrap dark:text-white'>{row.paymentId}</TableCell>
-        <TableCell align="right" className='text-nowrap dark:text-white'>{row.name}</TableCell>
-        <TableCell align="right" className='text-nowrap dark:text-white'>{row.phoneNumber}</TableCell>
-        <TableCell align="left" style={{ minWidth: 300 }} className='dark:text-white'>{row.address}</TableCell>
-        <TableCell align="right" className='text-nowrap dark:text-white'>{row.pincode}</TableCell>
-        <TableCell align="center" className='text-nowrap dark:text-white'>{row.totalAmount}</TableCell>
-        <TableCell align="right" className='text-nowrap dark:text-white'>{row.email}</TableCell>
-        <TableCell align="right" className='text-nowrap dark:text-white'>{row.userId}</TableCell>
-        <TableCell align="right"><span className={`text-nowrap py-2 px-4 text-sm rounded-full ${getStatusColor(row.orderStatus)}`}>{row.orderStatus}</span></TableCell>
-        <TableCell align="right" className='text-nowrap dark:text-white'>{row.date}</TableCell>
+
+        <TableCell sx={{ fontWeight: 600 }}>
+          {row.orderId}
+        </TableCell>
+
+        <TableCell>{row.shippingAddress.fullName}</TableCell>
+
+        <TableCell>{row.shippingAddress.mobile}</TableCell>
+
+        <TableCell sx={{ maxWidth: 250 }}>
+          {row.shippingAddress.houseNumber},{" "}
+          {row.shippingAddress.address_line},{" "}
+          {row.shippingAddress.city},{" "}
+          {row.shippingAddress.state}
+        </TableCell>
+
+        <TableCell>{row.shippingAddress.pincode}</TableCell>
+
+        <TableCell sx={{ fontWeight: 600 }}>
+          ₹{row.totalAmount}
+        </TableCell>
+
+        <TableCell>
+          <StatusChip status={row.orderStatus} />
+        </TableCell>
+
+        <TableCell>
+          <StatusChip status={row.paymentStatus} />
+        </TableCell>
+
+        <TableCell>
+          {new Date(row.createdAt).toLocaleDateString()}
+        </TableCell>
       </TableRow>
-      <TableRow className='dark:bg-gray-800'>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0, paddingLeft: 80, borderBottom: "none" }} colSpan={6} >
+
+      {/* EXPANDABLE ITEMS */}
+      <TableRow>
+        <TableCell colSpan={10} sx={{ p: 0 }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ margin: 1 }}>
-              {/* <Typography variant="h6" gutterBottom component="div">
-                History
-              </Typography> */}
-              <Table size="small" aria-label="purchases" >
+            <Box
+              sx={{
+                margin: 2,
+                borderRadius: 2,
+                backgroundColor: "#f9fafb",
+                p: 2,
+              }}
+            >
+              <Table size="small">
                 <TableHead>
-                  <TableRow className='dark:bg-gray-800'>
-                    <TableCell className='dark:text-white'>PRODUCT ID</TableCell>
-                    <TableCell className='dark:text-white'>PRODUCT TITLE</TableCell>
-                    <TableCell className='dark:text-white' align="left">IMAGE</TableCell>
-                    <TableCell className='dark:text-white' align="right">QUANTITY</TableCell>
-                    <TableCell className='dark:text-white' align="right">TOTAL PRICE ($)</TableCell>
-                    <TableCell className='dark:text-white' align="right">SUB TOTAL</TableCell>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>
+                      Product
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>
+                      Image
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>
+                      Price
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>
+                      Qty
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>
+                      Subtotal
+                    </TableCell>
                   </TableRow>
                 </TableHead>
+
                 <TableBody>
-                  {row.history.map((historyRow) => (
-                    <TableRow key={historyRow.productId} className='dark:bg-gray-800'>
-                      <TableCell component="th" scope="row" className='dark:text-white'>{historyRow.productId}</TableCell>
-                      <TableCell className='dark:text-white'>{historyRow.productTitle}</TableCell>
-                      <TableCell className='dark:text-white'><img src={historyRow.image} className='h-12 w-12 rounded-md object-cover' /></TableCell>
-                      <TableCell align="right" className='dark:text-white'>{historyRow.quantity}</TableCell>
-                      <TableCell align="right" className='dark:text-white'>
-                        {Math.round(historyRow.quantity * row.totalAmount * 100) / 100}
+                  {row.items.map((item) => (
+                    <TableRow key={item._id}>
+                      <TableCell>{item.name}</TableCell>
+
+                      <TableCell>
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          style={{
+                            height: 50,
+                            width: 50,
+                            borderRadius: 8,
+                            objectFit: "cover",
+                          }}
+                        />
                       </TableCell>
-                      <TableCell align="right" className='dark:text-white'>
-                        {Math.round(historyRow.quantity * row.totalAmount * 100) / 100}
+
+                      <TableCell align="right">
+                        ₹{item.price}
+                      </TableCell>
+
+                      <TableCell align="right">
+                        {item.quantity}
+                      </TableCell>
+
+                      <TableCell align="right">
+                        ₹{item.price * item.quantity}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -132,82 +203,109 @@ function Row(props: { row: ReturnType<typeof createData> }) {
           </Collapse>
         </TableCell>
       </TableRow>
-    </React.Fragment>
+    </>
   );
 }
-const rows = [
-  createData('ORD12345', "pay_001", "GOVARDHAN REDDY", 9876543210, "H.No 222, Street No.4, Pragathi Colony, Hyderabad", "500073", 5800, "johndoe@GoMail.com", "USER001", "Pending", "2-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Shipped", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Delivered", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Delivered", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Shipped", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Pending", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Delivered", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Pending", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Delivered", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Pending", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Shipped", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Shipped", "3-1-2025"),
-  createData('ORD12346', "pay_002", "RAHUL KUMAR", 9123456789, "123, Banjara Hills, Hyderabad", "500034", 7200, "rahul@GoMail.com", "USER002", "Delivered", "3-1-2025"),
-];
+
+/* ================= MAIN COMPONENT ================= */
 
 export default function MyOrders() {
+  const [orders, setOrders] = React.useState<Order[]>([]);
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const { isAuthenticated, isAuthLoading } = useAuth();
 
+  React.useEffect(() => {
+    if (!isAuthenticated || isAuthLoading) return;
+    const fetchOrders = async () => {
+      try {
+        const res = await api.get("/api/v1/order/my-orders");
+        setOrders(res.data.orders || []);
+      } catch (error) {
+        console.error("Failed to fetch orders", error);
+      }
+    };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
+    fetchOrders();
+  }, [isAuthenticated, isAuthLoading]);
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(+event.target.value);
-    setPage(0);
-  };
-
-
-
+  const paginatedOrders = orders.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
 
   return (
-    <div>
-      <h1 className='text-xl font-semibold dark:text-white mb-4'>My Orders</h1>
-      <hr className="my-4" />
+    <div className="py-6 px-2">
+      <h1 className="text-2xl font-bold mb-6">
+        My Orders
+      </h1>
 
-      <Paper className='bg-gray-50 dark:bg-gray-900 text-[#fff] dark:text-[#000] w-[95%] mx-auto'>
-        <TableContainer component={Paper} sx={{ maxHeight: 440 }} className='dark:bg-gray-800 muiTableContainer overflow-auto'>
-          <Table aria-label="collapsible table" stickyHeader>
+      <Paper
+        elevation={3}
+        sx={{
+          borderRadius: 3,
+          overflow: "hidden",
+        }}
+      >
+        <TableContainer
+          sx={{
+            maxHeight: rowsPerPage > 5 ? 350 : "auto",
+            overflowY: rowsPerPage > 5 ? "auto" : "visible",
+          }}
+        >
+          <Table stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell className='dark:bg-gray-900' />
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>ORDER ID</TableCell>
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>PAYMENT ID</TableCell>
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>NAME</TableCell>
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>PHONE NUMBER</TableCell>
-                <TableCell align="center" style={{ minWidth: 300 }} className='dark:text-white dark:bg-gray-900'>ADDRESS</TableCell>
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>PINCODE</TableCell>
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>TOTAL AMOUNT</TableCell>
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>EMAIL</TableCell>
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>USER ID</TableCell>
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>ORDER STATUS</TableCell>
-                <TableCell align="center" className='text-nowrap dark:text-white dark:bg-gray-900'>DATE</TableCell>
+                <TableCell />
+                <TableCell sx={{ fontWeight: 700 }}>
+                  Order ID
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  Name
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  Phone
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  Address
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  Pincode
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  Total
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  Status
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  Payment
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  Date
+                </TableCell>
               </TableRow>
             </TableHead>
-            <TableBody className='dark:bg-gray-800'>
-              {rows.map((row) => (
-                <Row key={row.name} row={row} />
+
+            <TableBody>
+              {paginatedOrders.map((row) => (
+                <Row key={row._id} row={row} />
               ))}
             </TableBody>
           </Table>
         </TableContainer>
+
         <TablePagination
-          rowsPerPageOptions={[3, 5, 10, 25, 100]}
+          rowsPerPageOptions={[3, 5, 10, 25]}
           component="div"
-          count={rows.length}
+          count={orders.length}
           rowsPerPage={rowsPerPage}
           page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          className=' dark:bg-gray-900 dark:text-white'
+          onPageChange={(e, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(+e.target.value);
+            setPage(0);
+          }}
         />
       </Paper>
     </div>

@@ -1,18 +1,43 @@
-
 import mongoose from "mongoose";
 
 const chatSchema = new mongoose.Schema(
-    {
-        name: { type: String, trim: true, required: true},
-        isGroup: {type: Boolean, default: false},
-        groupAdmin: { type: mongoose.Schema.Types.ObjectId, ref: "User"},
-        members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User"}],
-        lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: "Message"},
-        unreadCount: { type: Number, min: 0 },
-        isOnline: {type: Boolean, default: false},
+  {
+    chatName: { type: String, trim: true, required: true },
+    isGroup: { type: Boolean, default: false },
+    groupAdmins: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: function (this: any) {
+        return this.isGroup;
+      },
+    }],
+    groupCreator: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    groupName: String,
+    groupIcon: { url: String, public_id: String},
+    lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
+    unreadCounts: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        count: { type: Number, default: 0 },
+      },
+    ],
+    lastActivity: { type: Date },
+    pinnedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    mutedBy: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        until: Date,
+      },
+    ],
+    archivedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    disappearingMessages: {
+      isEnabled: { type: Boolean, default: false },
+      duration: Number, // seconds
     },
-    { timestamps: true}
-)
+  },
+  { timestamps: true },
+);
 
 const ChatModel = mongoose.model("Chat", chatSchema);
 export default ChatModel;

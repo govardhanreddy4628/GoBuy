@@ -1,52 +1,80 @@
 import mongoose from "mongoose";
 
-const addressSchema = new mongoose.Schema({
-    fullName : {
-        type : Number,
-        required : true,
+const addressSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+      required: true,
     },
-    mobile : {
-        type : Number,
-        default : null,
-        required : true,
-    },
-    houseNumber : {
-        type : String,
-        required : true,
-    },
-    address_line : {
-        type : String,
-        default : ""
-    },
-    landmark : {
-        type : String,
-    },
-    pincode : {
-        type : String,               //the default value will be undefined when u didnot define default value explicitly.     
-        required : true,  
-    },
-    city : {
-        type : String,
-        default : "",
-        required : true,
-    },
-    country : {
-        type : String,
-    },
-    state : {
-        type: String,
-        default: "",
-        required : true,
-    },
-    status : {
-        type : Boolean,
-        default : true,
-    },
-    userId : {
-        type : mongoose.Schema.ObjectId,
-        default : ''
-    },
-},{timestamps : true}) 
 
-const addressModel = mongoose.model("address", addressSchema)
+    fullName: {
+      type: String,
+      required: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+    },
+
+    mobile: {
+      type: String,
+      required: true,
+    },
+
+    houseNumber: {
+      type: String,
+      required: true,
+    },
+
+    address_line: {
+      type: String,
+      default: "",
+    },
+
+    landmark: {
+      type: String,
+    },
+
+    city: {
+      type: String,
+      required: true,
+    },
+
+    state: {
+      type: String,
+      required: true,
+    },
+
+    pincode: {
+      type: String,
+      required: true,
+    },
+
+    country: {
+      type: String,
+      default: "India",
+    },
+
+    adress_type: {
+      type: String,
+      enum: ["home", "office"],
+      default: "home",
+    },
+
+    isDefault: {
+      type: Boolean,
+      default: false,
+    },
+
+    status: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { timestamps: true },
+);
+
+const addressModel = mongoose.model("address", addressSchema);
 export default addressModel;

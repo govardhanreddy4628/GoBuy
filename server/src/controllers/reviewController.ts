@@ -4,12 +4,15 @@ import ProductModel from "../models/productModel.js";
 import { z } from "zod";
 import { moderateComment } from "../utils/moderation.js";
 import { ReviewModel } from "../models/reviewsModel.js";
+import orderModel from "../models/orderModel.js";
+import cloudinary from "../config/cloudinary.js";
+import { getIO } from "../sockets/index.js";
 
 // --- Zod validation schema for adding/updating review ---
+
 const ReviewValidationSchema = z.object({
-  product: z.string().regex(/^[a-f\d]{24}$/i, "Invalid product ID"),
-  user: z.string().regex(/^[a-f\d]{24}$/i, "Invalid user ID"),
-  rating: z.number().min(1).max(5),
+  productId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid product ID"),
+  rating: z.preprocess((val) => Number(val), z.number().min(1).max(5)),
   title: z.string().max(100).optional(),
   comment: z.string().min(5),
   media: z.array(z.string().url()).optional(),
@@ -38,24 +41,170 @@ const updateProductRating = async (productId: string) => {
   });
 };
 
+export const getProductReviews = async (req: Request, res: Response) => {
+  try {
+    const { productId } = req.query;
+    const { page = 1, limit = 10, sortBy = "recent" } = req.query;
+
+    if (!productId)
+      return res.status(400).json({ error: "Product ID required" });
+
+    const skip = (+page - 1) * +limit;
+
+    let sortStage: any = { createdAt: -1 };
+
+    if (sortBy === "helpful") {
+      sortStage = {
+        helpfulScore: -1,
+      };
+    }
+
+    const reviews = await ReviewModel.aggregate([
+      {
+        $match: {
+          product: new mongoose.Types.ObjectId(productId as string),
+          status: "approved",
+        },
+      },
+
+      // 🔥 JOIN USER
+      {
+        $lookup: {
+          from: "users", // collection name
+          localField: "user",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unwind: "$user",
+      },
+
+      // 🧠 AI Helpful Score
+      {
+        $addFields: {
+          helpfulScore: {
+            $add: [
+              { $multiply: ["$upvotes", 2] },
+              { $multiply: ["$downvotes", -1] },
+              {
+                $cond: ["$verifiedPurchase", 5, 0],
+              },
+              {
+                $divide: [
+                  {
+                    $subtract: [new Date(), "$createdAt"],
+                  },
+                  1000 * 60 * 60 * 24,
+                ],
+              },
+            ],
+          },
+        },
+      },
+
+      // ✅ SEND CLEAN DATA TO FRONTEND
+      {
+        $project: {
+          _id: 1,
+          rating: 1,
+          comment: 1,
+          media: 1,
+          upvotes: 1,
+          downvotes: 1,
+          verifiedPurchase: 1,
+          createdAt: 1,
+          "user.name": 1,
+          "user.avatar": 1,
+        },
+      },
+
+      { $sort: sortStage },
+      { $skip: skip },
+      { $limit: +limit },
+    ]);
+
+    // 📊 Rating stats
+    const stats = await ReviewModel.aggregate([
+      {
+        $match: {
+          product: new mongoose.Types.ObjectId(productId as string),
+          status: "approved",
+        },
+      },
+      {
+        $group: {
+          _id: "$rating",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const totalReviews = stats.reduce((acc, s) => acc + s.count, 0);
+
+    const averageRating =
+      stats.reduce((acc, s) => acc + s._id * s.count, 0) / (totalReviews || 1);
+
+    res.json({
+      success: true,
+      reviews,
+      stats: {
+        averageRating,
+        totalReviews,
+        breakdown: stats,
+      },
+      hasMore: reviews.length === +limit, // ⚡ for infinite scroll
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
 // --- Add a review ---
 export const addReview = async (req: Request, res: Response) => {
   try {
     const validated = ReviewValidationSchema.parse(req.body);
 
+    const userId = req.user?.id; // ✅ from auth middleware
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
     // 1️⃣ Prevent duplicate reviews by same user
     const existing = await ReviewModel.findOne({
-      product: validated.product,
-      user: validated.user,
+      product: validated.productId,
+      user: userId,
     });
     if (existing)
       return res
         .status(400)
         .json({ error: "User has already reviewed this product" });
 
+    // ✅ Check purchase (REAL)
+    const hasPurchased = await orderModel.exists({
+      user: userId,
+      "items.product": validated.productId,
+      status: "delivered",
+    });
+    const verifiedPurchase = !!hasPurchased;
+
+     // ✅ Upload images to Cloudinary
+    let mediaUrls: string[] = [];
+    // ✅ Handle media (multer)
+    const files = req.files as Express.Multer.File[];
+    if (files && files.length > 0) {
+      const uploads = await Promise.all(
+        files.map((file) =>
+          cloudinary.uploader.upload(file.path, {
+            folder: "reviews",
+          })
+        )
+      );
+
+      mediaUrls = uploads.map((img) => img.secure_url);
+    }
+
     // 2️⃣ Count previous reviews for spam heuristic
     const userPreviousCount = await ReviewModel.countDocuments({
-      user: validated.user,
+      user: userId,
       createdAt: { $gte: new Date(Date.now() - 1000 * 60 * 60 * 24) },
     });
 
@@ -82,121 +231,117 @@ export const addReview = async (req: Request, res: Response) => {
       }
     }
 
-    // 5️⃣ Optional purchase verification
-    const verifiedPurchase = true; // Replace with actual order check
-
-    // 6️⃣ Save review
+    // ✅ Create review
     const review = await ReviewModel.create({
-      ...validated,
+      product: validated.productId,
+      user: userId,
+      rating: validated.rating,
+      title: validated.title,
+      comment: validated.comment,
+      media: mediaUrls, // ✅ FIXED (not images)
       verifiedPurchase,
       status,
     });
 
     // 7️⃣ Update rating immediately only if approved
     if (status === "approved") {
-      await updateProductRating(validated.product);
+      await updateProductRating(validated.productId);
     }
 
+     // 🔥 IMPORTANT: populate user before sending
+    const populatedReview = await review.populate("user", "name avatar");
+
+    // 🔥 SOCKET EMIT (CORRECT)
+    const io = getIO();
+    io.to(validated.productId.toString()).emit(
+      "new-review",
+      populatedReview
+    );
+
     // 8️⃣ Response message
-    if (status === "approved") {
-      return res.status(201).json({
-        message: "Your review has been posted successfully!",
-        review,
-      });
-    } else if (status === "pending") {
-      return res.status(201).json({
-        message: "Your review is under moderation and will be visible soon.",
-        review,
-      });
-    } else {
-      return res.status(400).json({
-        message: "Your review contains inappropriate content and was rejected.",
-      });
-    }
+    return res.status(201).json({
+      message:
+        status === "approved"
+          ? "Your review has been posted successfully!"
+          : status === "pending"
+            ? "Your review is under moderation and will be visible soon."
+            : "Your review was rejected.",
+      review,
+    });
   } catch (err: any) {
     res.status(400).json({ error: err.errors || err.message });
   }
 };
 
-// --- Get reviews for a product with pagination & sorting ---
-export const getProductReviews = async (req: Request, res: Response) => {
-  try {
-    const { productId } = req.params;
-    const { page = 1, limit = 10, sortBy = "recent" } = req.query;
 
-    const sortOptions: any = { createdAt: -1 };
-    if (sortBy === "helpful") sortOptions.upvotes = -1;
-    else if (sortBy === "rating_high") sortOptions.rating = -1;
-    else if (sortBy === "rating_low") sortOptions.rating = 1;
-
-    const reviews = await ReviewModel.find({
-      product: productId,
-      status: "approved",
-    })
-      .populate("user", "name")
-      .skip((+page - 1) * +limit)
-      .limit(+limit)
-      .sort(sortOptions);
-
-    const stats = await ReviewModel.aggregate([
-      {
-        $match: {
-          product: new mongoose.Types.ObjectId(productId),
-          status: "approved",
-        },
-      },
-      {
-        $group: {
-          _id: "$product",
-          averageRating: { $avg: "$rating" },
-          totalReviews: { $sum: 1 },
-        },
-      },
-    ]);
-
-    res.json({
-      reviews,
-      stats: stats[0] || { averageRating: 0, totalReviews: 0 },
-    });
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-};
-
-// --- Vote on review (upvote/downvote) ---
 export const voteReview = async (req: Request, res: Response) => {
   try {
     const { reviewId } = req.params;
-    const { userId, vote } = req.body; // vote: "up" or "down"
+    const { vote } = req.body; // "up" | "down"
+    const userId = req.user?.id;
 
-    if (!["up", "down"].includes(vote))
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    if (!["up", "down"].includes(vote)) {
       return res.status(400).json({ error: "Invalid vote type" });
+    }
 
     const review = await ReviewModel.findById(reviewId);
     if (!review) return res.status(404).json({ error: "Review not found" });
 
-    const existingVote = review.votedUsers?.find(
-      (v) => v.userId.toString() === userId,
+    // 🔥 Find existing vote
+    const existingVote = review.votedUsers.find(
+      (v) => v.userId.toString() === userId
     );
+
     if (existingVote) {
-      if (existingVote.vote === vote) return res.json(review); // already voted same way
-      existingVote.vote = vote; // update opposite vote
+      // ❌ Same vote again → block
+      if (existingVote.vote === vote) {
+        return res.status(400).json({ error: "Already voted" });
+      }
+
+      // 🔁 Switch vote
+      if (vote === "up") {
+        review.upvotes += 1;
+        review.downvotes -= 1;
+      } else {
+        review.downvotes += 1;
+        review.upvotes -= 1;
+      }
+
+      existingVote.vote = vote;
     } else {
-      review.votedUsers?.push({
+      // ✅ New vote
+      if (vote === "up") review.upvotes += 1;
+      else review.downvotes += 1;
+
+      review.votedUsers.push({
         userId: new mongoose.Types.ObjectId(userId),
         vote,
       });
     }
 
-    review.upvotes = review.votedUsers?.filter((v) => v.vote === "up").length;
-    review.downvotes = review.votedUsers?.filter(
-      (v) => v.vote === "down",
-    ).length;
+    // 🛑 Safety (avoid negative values)
+    review.upvotes = Math.max(0, review.upvotes);
+    review.downvotes = Math.max(0, review.downvotes);
 
     await review.save();
-    res.json(review);
+
+    // ⚡ Realtime update
+    const io = getIO();
+    io.to(review.product.toString()).emit("review-vote-update", {
+      reviewId: review._id,
+      upvotes: review.upvotes,
+      downvotes: review.downvotes,
+    });
+
+    res.json({
+      success: true,
+      upvotes: review.upvotes,
+      downvotes: review.downvotes,
+    });
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 

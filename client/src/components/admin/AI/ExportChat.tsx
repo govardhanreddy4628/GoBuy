@@ -15,6 +15,7 @@ interface ExportChatProps {
 export function ExportChat({ messages, agent }: ExportChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<'json' | 'txt' | 'csv'>('json');
+  
   const { toast } = useToast();
 
   const exportAsJSON = () => {

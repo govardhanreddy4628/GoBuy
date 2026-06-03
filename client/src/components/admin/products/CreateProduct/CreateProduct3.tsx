@@ -84,7 +84,7 @@ const productSchema = z.object({
     isFeatured: z.boolean().default(false),
     warranty: z.string().optional(),
     sku: z.string().min(1, "SKU is required").max(50, "SKU must be less than 50 characters"),
-    productColor: z.string().optional(), // ✅ string now
+    productColor: z.string().optional().or(z.literal("")),
     availableColorsForProduct: z.array(z.string()).optional(),
     trackQuantity: z.boolean().default(true),
     quantityInStock: z.coerce.number().optional(),
@@ -318,6 +318,7 @@ export default function CreateProduct3() {
 
             const payload = {
                 ...data,
+                productColor: data.productColor || undefined, 
                 images: normalizedImages, // each image has public_id + secure_url
                 deletedImages: deletedImagePublicIds,
             };

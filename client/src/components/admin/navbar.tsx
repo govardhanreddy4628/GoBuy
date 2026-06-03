@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from '../../ui/avatar';
 import { useNavigate } from 'react-router-dom';
 import LogoutDialog from './logoutDialog';
+import { useAuth } from '../../context/authContext';
 
 interface NavbarProps {
     className?: string;
@@ -55,41 +56,42 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
 }));
 
 export function Navbar({ className }: NavbarProps) {
-       
+
     const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
     const navigate = useNavigate()
+    const { user } = useAuth();
 
     return (
         <>
-        <header className={cn("bg-white/95 backdrop-blur-sm sticky top-0 z-10 border-b dark:bg-gray-950")}>
-            <div className="container flex items-center justify-between h-16 px-4">
-                <h1 className="text-lg font-semibold tracking-tight lg:text-xl"><span className='text-green-500'>Go-</span>Board</h1>
-                <div className="flex items-center gap-2 lg:gap-4">
+            <header className={cn("bg-white/95 backdrop-blur-sm sticky top-0 z-10 border-b dark:bg-gray-950")}>
+                <div className="container flex items-center justify-between h-16 px-4">
+                    <h1 className="text-lg font-semibold tracking-tight lg:text-xl"><span className='text-green-500'>Go-</span>Board</h1>
+                    <div className="flex items-center gap-2 lg:gap-4">
 
-                    <div className="relative hidden md:flex items-center h-9 rounded-md px-3 text-muted-foreground focus-within:text-foreground bg-muted/50 bg-slate-200 dark:bg-gray-600 focus-within:outline-none">
-                        <Search className="h-4 w-4 mr-2" />
-                        <input
-                            type="text"
-                            placeholder="Search..."
-                            className={cn(
-                                "flex w-full rounded-md border border-input bg-background text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                                "h-9 w-[200px] lg:w-[280px] bg-transparent border-none px-0 py-0 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
-                            )}
-                        />
+                        <div className="relative hidden md:flex items-center h-9 rounded-md px-3 text-muted-foreground focus-within:text-foreground bg-muted/50 bg-slate-200 dark:bg-gray-600 focus-within:outline-none">
+                            <Search className="h-4 w-4 mr-2" />
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                className={cn(
+                                    "flex w-full rounded-md border border-input bg-background text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+                                    "h-9 w-[200px] lg:w-[280px] bg-transparent border-none px-0 py-0 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+                                )}
+                            />
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex items-center gap-4">
-                    <ThemeToggle />
+                    <div className="flex items-center gap-4">
+                        <ThemeToggle />
 
-                    <Tooltip title="Notifications">
-                        <IconButton aria-label="bell" >
-                            <Bell className='!text-animate-none dark:text-gray-50' />          {/*  this class not working check this later */}
-                            <Badge badgeContent={2} color="primary" className='animate-pulse -top-[12px] right-[1px]'></Badge>
-                        </IconButton>
-                    </Tooltip>
+                        <Tooltip title="Notifications">
+                            <IconButton aria-label="bell" >
+                                <Bell className='!text-animate-none dark:text-gray-50' />          {/*  this class not working check this later */}
+                                <Badge badgeContent={2} color="primary" className='animate-pulse -top-[12px] right-[1px]'></Badge>
+                            </IconButton>
+                        </Tooltip>
 
-                    {/* <Tooltip title="Account settings">
+                        {/* <Tooltip title="Account settings">
                         <div className="flex items-center gap-4 shadow-xs rounded-md cursor-pointer" onClick={handleClick}>
                             <StyledBadge
                                 overlap="circular"
@@ -171,48 +173,55 @@ export function Navbar({ className }: NavbarProps) {
                         </MenuItem>
                     </Menu> */}
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger className="focus:outline-none">
-                            <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-transparent transition-all hover:ring-primary/20">
-                                <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=admin" alt="Admin" />
-                                <AvatarFallback className="bg-primary text-primary-foreground">AD</AvatarFallback>
-                            </Avatar>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel>
-                                <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium">Admin User</p>
-                                    <p className="text-xs text-muted-foreground">admin@example.com</p>
-                                </div>
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate("/adminprofile")}>
-                                <User className="mr-2 h-4 w-4" />
-                                <span>Profile</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate("/adminsettings")}>
-                                <Settings className="mr-2 h-4 w-4" />
-                                <span>Settings</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate("/adminchangepassword")}>
-                                <Lock className="mr-2 h-4 w-4" />
-                                <span>Change Password</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                className="cursor-pointer text-destructive focus:text-destructive"
-                                onClick={() => setShowLogoutDialog(true)}
-                            >
-                                <LogOut className="mr-2 h-4 w-4" />
-                                <span>Logout</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger className="focus:outline-none">
+                                {!user ? null :
+                                <Avatar className="h-9 w-9 cursor-pointer ring-2 ring-transparent transition-all hover:ring-primary/20">
+                                    <AvatarImage
+                                        src={user?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=default"}
+                                        alt={user?.fullName || "User"}
+                                    />
+                                    <AvatarFallback className="bg-primary text-primary-foreground">
+                                        {user?.fullName ? user.fullName.split(" ").map((n) => n[0]).join("").toUpperCase() : "U"}
+                                    </AvatarFallback>                               
+                                </Avatar>
+                                }
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuLabel>
+                                    <div className="flex flex-col space-y-1">
+                                        <p className="text-sm font-medium">{user?.fullName || "Unknown User"}</p>
+                                        <p className="text-xs text-muted-foreground">{user?.email || "No Email"}</p>
+                                    </div>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="cursor-pointer" onClick={() => navigate("/adminprofile")}>
+                                    <User className="mr-2 h-4 w-4" />
+                                    <span>Profile</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="cursor-pointer" onClick={() => navigate("/adminsettings")}>
+                                    <Settings className="mr-2 h-4 w-4" />
+                                    <span>Settings</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="cursor-pointer" onClick={() => navigate("/adminchangepassword")}>
+                                    <Lock className="mr-2 h-4 w-4" />
+                                    <span>Change Password</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    className="cursor-pointer text-destructive focus:text-destructive"
+                                    onClick={() => setShowLogoutDialog(true)}
+                                >
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    <span>Logout</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
-            </div>
-        </header>
+            </header>
 
-        <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} />
+            <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} />
 
         </>
     );

@@ -15,9 +15,9 @@ interface AgentSidebarProps {
   onSettingsUpdate: (settings: AgentSettingsType) => void;
 }
 
-export function AgentSidebar({ 
-  agents, 
-  selectedAgent, 
+export function AgentSidebar({
+  agents,
+  selectedAgent,
   onAgentSelect,
   chatHistories,
   currentHistoryId,
@@ -27,6 +27,15 @@ export function AgentSidebar({
   onExportHistory,
   onSettingsUpdate
 }: AgentSidebarProps) {
+
+  type AgentType = 'sales' | 'inventory' | 'support';
+
+  const colorMap: Record<AgentType, string> = {
+    sales: 'bg-blue-500/10',
+    inventory: 'bg-green-500/10',
+    support: 'bg-purple-500/10'
+  };
+
   return (
     <div className="w-64 bg-admin-sidebar text-admin-sidebar-fg flex flex-col border-r border-border shadow-lg">
       {/* Header */}
@@ -56,25 +65,27 @@ export function AgentSidebar({
 
       {/* Agents List */}
       <div className="flex-1 p-4 space-y-2">
-        {agents.map((agent) => (
+        {agents.map((agent) => {
+          const colorClass = colorMap[agent.type];
+        return (
           <button
             key={agent.id}
             onClick={() => onAgentSelect(agent)}
             className={`
               w-full text-left p-4 rounded-lg transition-all duration-200 group
               ${selectedAgent?.id === agent.id
-                ? 'bg-admin-sidebar-active text-white shadow-md'
+                ? 'bg-admin-sidebar-active shadow-md border border-dotted border-primary'
                 : 'hover:bg-admin-sidebar-hover text-admin-sidebar-fg/90 hover:text-admin-sidebar-fg'
               }
             `}
           >
             <div className="flex items-start space-x-3">
-              <div 
+              <div
                 className={`
                   text-2xl p-2 rounded-lg transition-colors duration-200
-                  ${selectedAgent?.id === agent.id 
-                    ? 'bg-white/20' 
-                    : `bg-${agent.color}/20 group-hover:bg-${agent.color}/30`
+                  ${selectedAgent?.id === agent.id
+                    ? 'bg-white/20'
+                    : `${colorClass} group-hover:opacity-80`
                   }
                 `}
               >
@@ -84,11 +95,11 @@ export function AgentSidebar({
                 <h3 className="font-semibold text-sm mb-1 truncate">
                   {agent.name}
                 </h3>
-                <p 
+                <p
                   className={`
                     text-xs leading-relaxed
                     ${selectedAgent?.id === agent.id
-                      ? 'text-white/80'
+                      ? ''
                       : 'text-admin-sidebar-fg/60 group-hover:text-admin-sidebar-fg/80'
                     }
                   `}
@@ -97,7 +108,7 @@ export function AgentSidebar({
                 </p>
               </div>
             </div>
-            
+
             {/* Active indicator */}
             {selectedAgent?.id === agent.id && (
               <div className="mt-3 w-full h-0.5 bg-white/30 rounded-full overflow-hidden">
@@ -105,7 +116,7 @@ export function AgentSidebar({
               </div>
             )}
           </button>
-        ))}
+        )})}
       </div>
 
       {/* Footer */}

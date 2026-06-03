@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../ui/dialog";
 import { toast } from "../../../hooks/use-toast";
-import { Search, Plus, Settings, Users, MessageCircle, UserPlus, Users2 } from "lucide-react";
+import { Search, Plus, Settings, Users, MessageCircle } from "lucide-react";
 import { Button } from "../../../ui/button";
 import { Label } from "../../../ui/label";
 import { Switch } from "../../../ui/switch";
@@ -10,147 +10,84 @@ import { Separator } from "../../../ui/separator";
 import { ScrollArea } from "../../../ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../ui/avatar";
 import { Badge } from "../../../ui/badge";
+import { IoFilterSharp } from "react-icons/io5";
 
-interface Chat {
+
+export interface Chat {
   id: string;
   name: string;
+  memberCount?: number;
   lastMessage: string;
   timestamp: string;
   unreadCount: number;
   isOnline: boolean;
   avatar?: string;
   isGroup: boolean;
+  members?: string[];
 }
-
 interface ChatSidebarProps {
+  chats: Chat[];
   selectedChatId?: string;
   onChatSelect: (chatId: string) => void;
-  onNewChat?: () => void;
+  handleNewChat?: () => void;
 }
 
-interface User {
-  id: string;
-  name: string;
-  avatar?: string;
-  isOnline?: boolean;
-}
 
-const mockUsers: User[] = [
-  { id: "u1", name: "Alice Johnson" },
-  { id: "u2", name: "Bob Wilson" },
-  { id: "u3", name: "Sarah Tech Lead" },
-  { id: "u4", name: "Mike Developer" },
-  { id: "u2", name: "Bob Wilson" },
-  { id: "u3", name: "Sarah Tech Lead" },
-  { id: "u4", name: "Mike Developer" },
-];
-
-const mockChats: Chat[] = [
-  {
-    id: "1",
-    name: "Alice Johnson",
-    lastMessage: "Hey! How's your project going?",
-    timestamp: "2m ago",
-    unreadCount: 2,
-    isOnline: true,
-    isGroup: false
-  },
-  {
-    id: "2",
-    name: "Dev Team",
-    lastMessage: "Sarah: The new feature is ready for testing",
-    timestamp: "5m ago",
-    unreadCount: 0,
-    isOnline: false,
-    isGroup: true
-  },
-  {
-    id: "3",
-    name: "Bob Wilson",
-    lastMessage: "Thanks for the help yesterday!",
-    timestamp: "1h ago",
-    unreadCount: 0,
-    isOnline: false,
-    isGroup: false
-  },
-  {
-    id: "4",
-    name: "Design Team",
-    lastMessage: "Mike: New mockups are in Figma",
-    timestamp: "2h ago",
-    unreadCount: 1,
-    isOnline: false,
-    isGroup: true
-  }
-];
-
-export function ChatSidebar({ selectedChatId, onChatSelect, onNewChat }: ChatSidebarProps) {
+export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [newChatOpen, setNewChatOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [readReceipts, setReadReceipts] = useState(true);
   const [lastSeen, setLastSeen] = useState(false);
+  const [filter, setFilter] = useState<"all" | "group" | "individual">("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const [allUsers, setAllUsers] = useState<User[]>(mockUsers);
-  const [chatMode, setChatMode] = useState<"individual" | "group">("individual");
-  const [showUsersModal, setShowUsersModal] = useState(false);
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [groupName, setGroupName] = useState("");
+  const FILTER_OPTIONS = [
+    { label: "All", value: "all" },
+    { label: "Groups", value: "group" },
+    { label: "Individual", value: "individual" },
+  ] as const;
 
+  const filteredChats = useMemo(() => {
+    return chats
+      .filter(chat => {
+        // 🔍 search filter
+        const matchesSearch =
+          (chat.name ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (chat.lastMessage ?? "").toLowerCase().includes(searchQuery.toLowerCase());
 
-  const filteredChats = mockChats.filter(chat =>
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+        // 🎯 type filter
+        if (filter === "group") return matchesSearch && chat.isGroup;
+        if (filter === "individual") return matchesSearch && !chat.isGroup;
+
+        return matchesSearch; // "all"
+      });
+  }, [chats, searchQuery, filter]);
+
+  const sortedChats = [...filteredChats].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
-  const handleNewChat = () => {
-    setNewChatOpen(true);
-  };
+  const handleSelect = useCallback((id: string) => {
+    onChatSelect(id);
+  }, [onChatSelect]);
 
-  const handleCreateIndividualChat = () => {
-    setNewChatOpen(false);
-    setShowUsersModal(true);
-    setChatMode("individual")
-    toast({
-      title: "New Individual Chat",
-      description: "Creating a new individual conversation..."
-    });
-    onNewChat?.();
-  };
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!dropdownRef.current) return;
 
-  const handleCreateGroupChat = () => {
-    setNewChatOpen(false);
-    setShowUsersModal(true);
-    setChatMode("group")
-    toast({
-      title: "New Group Chat",
-      description: "Creating a new group conversation..."
-    });
-    onNewChat?.();
-  };
-
-  // 🔍 Filtered users based on search
-  const filteredUsers = useMemo(() => {
-    return allUsers.filter((user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery, allUsers]);
-
-  // ✅ Select/unselect logic
-  const toggleUser = (id: string) => {
-    if (chatMode === "individual") {
-      setSelectedUsers([id]);
-    } else {
-      if (selectedUsers.includes(id)) {
-        setSelectedUsers(selectedUsers.filter((u) => u !== id));
-      } else {
-        setSelectedUsers([...selectedUsers, id]);
+      if (!dropdownRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
       }
-    }
-  };
+    };
 
-  const onCreateChat = ()  => {setShowUsersModal(false)};
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
 
   return (
@@ -231,22 +168,56 @@ export function ChatSidebar({ selectedChatId, onChatSelect, onNewChat }: ChatSid
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search conversations..."
-            className="pl-10 bg-chat-input border-border"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        {/* Search + Filter */}
+        <div className="flex items-center gap-2">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search conversations..."
+              className="pl-10 pr-3 bg-chat-input border-border"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Filter Button */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setFilterOpen(prev => !prev);
+              }}
+              className="h-10 w-10 flex items-center justify-center rounded-md border border-border bg-chat-input hover:bg-accent transition"
+            >
+              <IoFilterSharp className="h-4 w-4 text-muted-foreground" />
+            </button>
+
+            {filterOpen && (
+              <div className="absolute right-0 mt-2 w-40 bg-background border border-border rounded-lg shadow-lg z-50">
+                {FILTER_OPTIONS.map((opt) => (
+                  <div
+                    key={opt.value}
+                    onClick={() => {
+                      setFilter(opt.value);
+                      setFilterOpen(false);
+                    }}
+                    className={`px-4 py-2 cursor-pointer hover:bg-accent transition ${filter === opt.value ? "bg-accent font-medium" : ""
+                      }`}
+                  >
+                    {opt.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Chat List */}
       <ScrollArea className="flex-1">
         <div className="p-2">
-          {filteredChats.length === 0 ? (
+          {sortedChats.length === 0 ? (
             <div className="text-center py-8">
               <MessageCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
@@ -254,10 +225,10 @@ export function ChatSidebar({ selectedChatId, onChatSelect, onNewChat }: ChatSid
               </p>
             </div>
           ) : (
-            filteredChats.map((chat) => (
-              <div
+            sortedChats.map((chat) => (
+              <div                      //later make this code as new component like ChatListItem(with React.memo so that useCallback fits oerfectly. else useCallback above is redundant) and pass chat, handleSelect as props to it. and also move handleSelect to that component and make it as onClick for that component. and also move selectedChatId to that component and make condition for active state of that component.
                 key={chat.id}
-                onClick={() => onChatSelect(chat.id)}
+                onClick={() => handleSelect(chat.id)}
                 className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-accent/50 ${selectedChatId === chat.id ? 'bg-accent' : ''
                   }`}
               >
@@ -268,12 +239,13 @@ export function ChatSidebar({ selectedChatId, onChatSelect, onNewChat }: ChatSid
                       {chat.isGroup ? (
                         <Users className="h-6 w-6" />
                       ) : (
-                        chat.name.split(' ').map(n => n[0]).join('')
+                        chat.name ? chat.name.split(' ').map(n => n[0]).join('') : 'N/A'
                       )}
                     </AvatarFallback>
                   </Avatar>
-                  {chat.isOnline && !chat.isGroup && (
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-600 rounded-full border-2 border-chat-sidebar"></div>
+                  {!chat.isGroup && (
+                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-chat-sidebar ${chat.isOnline ? "bg-green-600" : "bg-gray-400"
+                      }`} />
                   )}
                 </div>
 
@@ -283,7 +255,10 @@ export function ChatSidebar({ selectedChatId, onChatSelect, onNewChat }: ChatSid
                       {chat.name}
                     </h3>
                     <span className="text-xs text-muted-foreground">
-                      {chat.timestamp}
+                      {new Date(chat.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                   {/* for truncate to make work it's nearest parent should contrain its child width thats why i given max-w-48 for its parent. */}
@@ -294,128 +269,13 @@ export function ChatSidebar({ selectedChatId, onChatSelect, onNewChat }: ChatSid
 
                 {chat.unreadCount > 0 && (
                   <Badge variant="default" className="bg-primary text-primary-foreground">
-                    {chat.unreadCount}
+                    {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
                   </Badge>
                 )}
               </div>
             )))}
         </div>
       </ScrollArea>
-
-      {/* New Chat Dialog */}
-      <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Start New Chat</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Button
-              onClick={handleCreateIndividualChat}
-              className="w-full justify-start"
-              variant="outline"
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Start Individual Chat
-            </Button>
-            <Button
-              onClick={handleCreateGroupChat}
-              className="w-full justify-start"
-              variant="outline"
-            >
-              <Users2 className="h-4 w-4 mr-2" />
-              Create Group Chat
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-
-      {/* New Chat Dialog */}
-      <Dialog open={showUsersModal} onOpenChange={setShowUsersModal}>
-        <DialogContent className="max-w-md p-6">
-          <DialogHeader>
-            <DialogTitle>
-              {chatMode === "individual" ? "Start New Chat" : "Create Group Chat"}
-            </DialogTitle>
-          </DialogHeader>
-
-          {/* 🧠 Group name input */}
-          {chatMode === "group" && (
-            <div className="mb-3">
-              <Input
-                placeholder="Enter group name"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-              />
-            </div>
-          )}
-
-          {/* 🔍 Search bar */}
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-
-          {/* 👥 User list */}
-          <ScrollArea className="h-64 border rounded-lg">
-            <div className="divide-y divide-border">
-              {filteredUsers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-muted-foreground text-sm">
-                  No users found
-                </div>
-              ) : (
-                filteredUsers.map((user) => {
-                  const isSelected = selectedUsers.includes(user.id);
-                  return (
-                    <div
-                      key={user.id}
-                      className={`flex items-center gap-3 p-3 cursor-pointer transition-all ${isSelected
-                          ? "bg-primary/10 hover:bg-primary/20"
-                          : "hover:bg-accent"
-                        }`}
-                      onClick={() => toggleUser(user.id)}
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.avatar} alt={user.name} />
-                        <AvatarFallback>
-                          {user.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {user.name}
-                        </p>
-                      </div>
-                      {isSelected && (
-                        <span className="text-primary font-semibold text-xs">
-                          ✓
-                        </span>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </ScrollArea>
-
-          <Button className="w-full mt-4" onClick={onCreateChat}>
-            {chatMode === "individual" ? "Start Chat" : "Create Group"}
-          </Button>
-
-        </DialogContent>
-
-      </Dialog>
-
     </div>
   );
 }

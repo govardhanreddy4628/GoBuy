@@ -1,15 +1,28 @@
 import express from "express";
 import { getPendingReviews, moderateReview, getReviewModerationStats } from "../controllers/reviewController.js";
 //import { adminAuth } from "../middleware/adminAuth.js"; // restrict to admins
+import { getProductReviews, voteReview, addReview } from "../controllers/reviewController.js";
+import { uploadMultipleMedia } from "../middleware/multer.js";
+import { authenticate } from "../middleware/authenticate.js";
 
-const router = express.Router();
+const reviewsRouter = express.Router();
 
-// router.get("/reviews/pending", adminAuth, getPendingReviews);
-// router.put("/reviews/:id/moderate", adminAuth, moderateReview);
-// router.get("/reviews/stats", adminAuth, getReviewModerationStats);
+function asyncHandler(fn: any) {
+  return function (req: any, res: any, next: any) {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
 
-router.get("/reviews/pending", getPendingReviews);
-//router.put("/reviews/:id/moderate", moderateReview);
-router.get("/reviews/stats", getReviewModerationStats);
+// reviewsRouter.get("/reviews/pending", adminAuth, getPendingReviews);
+// reviewsRouter.put("/reviews/:id/moderate", adminAuth, moderateReview);
+// reviewsRouter.get("/reviews/stats", adminAuth, getReviewModerationStats);
 
-export default router;
+reviewsRouter.get("/reviews/pending", getPendingReviews);
+//reviewsRouter.put("/reviews/:id/moderate", moderateReview);
+reviewsRouter.get("/reviews/stats", getReviewModerationStats);
+
+reviewsRouter.get("/", asyncHandler(getProductReviews));
+reviewsRouter.post("/add", authenticate(), uploadMultipleMedia, asyncHandler(addReview));
+reviewsRouter.put("/:id/vote", authenticate(), asyncHandler(voteReview));
+
+export default reviewsRouter;

@@ -3,16 +3,12 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import * as Yup from "yup";
-
 import Loader from "../../ui/Loader";
 import { useAuth } from "../../context/authContext";
 import api, { setAccessToken } from "../../api/api_utility";
 import { useCart } from "../../context/cartContext";
 
-/* ======================
-   Validation schema
-====================== */
-
+/* ================= Validation schema =================== */
 const LoginSchema = Yup.object({
   role: Yup.string()
     .oneOf(["user", "admin"])
@@ -23,10 +19,7 @@ const LoginSchema = Yup.object({
   password: Yup.string().required("Password is required"),
 });
 
-/* ======================
-   Demo Credentials
-====================== */
-
+/* ==================Demo Credentials================= */
 const DEMO_USER = {
   email: "userexplorer@gmail.com",
   password: "123456",
@@ -36,10 +29,6 @@ const DEMO_ADMIN = {
   email: "adminexplorer@gmail.com",
   password: "123456",
 };
-
-/* ======================
-   Component
-====================== */
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -58,18 +47,16 @@ const Login = () => {
   const { setUser } = useAuth();
   const { mergeCartOnLogin } = useCart();
 
-  /* ======================
-     Validate
-  ====================== */
-
+  /* ================= Validate =================== */
   const validate = async () => {
     try {
       await LoginSchema.validate(form, { abortEarly: false });
       setErrors({});
       return true;
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as Yup.ValidationError;
       const formErrors: Record<string, string> = {};
-      err.inner.forEach((e: any) => {
+      error.inner.forEach((e) => {
         if (e.path) formErrors[e.path] = e.message;
       });
       setErrors(formErrors);
@@ -77,10 +64,7 @@ const Login = () => {
     }
   };
 
-  /* ======================
-     Handlers
-  ====================== */
-
+  /* ================= Handlers ================== */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -102,16 +86,12 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!(await validate())) return;
-
     setIsLoading(true);
 
     try {
       const res = await api.post("/api/v1/user/login", form);
-
       const { accessToken, user } = res.data?.data || {};
-
       if (!accessToken || !user) {
         throw new Error("Invalid login response");
       }
@@ -121,7 +101,6 @@ const Login = () => {
       await mergeCartOnLogin();
 
       sessionStorage.removeItem("didLogout");
-
       toast.success(res.data?.message || "Login successful");
 
       const role = user.role.toUpperCase();
@@ -129,10 +108,11 @@ const Login = () => {
       navigate(role === "ADMIN" ? "/dashboard" : "/", {
         replace: true,
       });
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as any;
       const message =
-        err?.response?.data?.message ||
-        err.message ||
+        error?.response?.data?.message ||
+        error.message ||
         "Login failed";
       toast.error(message);
     } finally {
@@ -146,16 +126,27 @@ const Login = () => {
 
   if (isLoading) return <Loader />;
 
-  /* ======================
-     UI
-  ====================== */
-
+  /* ====================== UI ====================== */
   return (
     <>
       {/* ================= DEMO MODAL ================= */}
       {showDemoModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-[90%] max-w-md shadow-xl">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowDemoModal(false)} // ✅ outside click
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-[90%] max-w-md shadow-xl relative"
+            onClick={(e) => e.stopPropagation()} // ✅ prevent close when clicking inside
+          >
+            {/* ❌ Close button */}
+            <button
+              onClick={() => setShowDemoModal(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-black text-lg"
+            >
+              ✕
+            </button>
+
             <h2 className="text-xl font-bold mb-2 text-center">
               🚀 Quick Explore
             </h2>
@@ -218,7 +209,7 @@ const Login = () => {
             {/* QUICK DEMO BUTTON */}
             <button
               type="button"
-              onClick={() => fillDemo(form.role)}
+              onClick={() => fillDemo(form.role as "user" | "admin")}
               className="w-full border border-dashed border-gray-400 py-2 rounded-md text-sm hover:bg-gray-50"
             >
               ⚡ Use {form.role === "admin" ? "Admin" : "User"} Demo

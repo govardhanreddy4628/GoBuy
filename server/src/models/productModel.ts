@@ -4,7 +4,7 @@ import slugifyModule from "slugify";
 
 const slugify = slugifyModule as unknown as (
   input: string,
-  options?: { lower?: boolean; strict?: boolean }
+  options?: { lower?: boolean; strict?: boolean },
 ) => string;
 
 export interface IEmbeddedOffer {
@@ -52,7 +52,8 @@ export interface IShipping extends Document {
   handlingTimeInDays?: number;
 }
 
-interface IProduct extends Document {
+export interface IProduct extends Document {
+  _id: mongoose.Types.ObjectId;
   name: string;
   slug: string;
   shortDescription: string;
@@ -63,7 +64,6 @@ interface IProduct extends Document {
   listedPrice: number;
   discountPercentage?: number;
   isFeatured?: boolean;
-  isActive?: boolean;
   productRam?: string[];
   productWeight?: string[];
   productColor?: string;
@@ -111,6 +111,10 @@ interface IProduct extends Document {
   embeddedOffers?: IEmbeddedOffer[]; // lightweight offers for fast reads
   warranty?: string;
   reviews?: IReview[];
+  views?: number;
+  cartAdds?: number;
+  orderedCount?: number;
+  product_vector?: number[]; // for vector search
   createdAt?: Date;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
@@ -207,16 +211,16 @@ const productSchema = new mongoose.Schema<IProduct>(
       max: [300000, "Listed price too high"],
     },
 
+    finalPrice: {
+      type: Number,
+      min: [0, "Final price cannot be negative"],
+    },
+
     discountPercentage: {
       type: Number,
       min: [0, "Discount cannot be negative"],
       max: [99, "Discount cannot exceed 99%"],
       default: 0,
-    },
-
-    finalPrice: {
-      type: Number,
-      min: [0, "Final price cannot be negative"],
     },
 
     brand: {
@@ -321,6 +325,12 @@ const productSchema = new mongoose.Schema<IProduct>(
       default: "active",
     },
 
+    views: { type: Number, default: 0 },
+    cartAdds: {type: Number, default: 0 },
+    orderedCount: { type: Number, default: 0 },
+
+    product_vector: { type: [Number], index: true}, // for vector search
+
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
     createdAt: { type: Date, default: Date.now },
@@ -348,13 +358,10 @@ productSchema.pre("save", async function (next) {
 
 //======================== Virtuals & Indexes ========================//
 
-
-
 // productSchema.index({ slug: 1 });
 productSchema.index({ category: 1 });
 // productSchema.index({ deleted: 1 });
 // productSchema.index({ isFeatured: 1 });
-
 
 const productModel = mongoose.model<IProduct>("Product", productSchema);
 export default productModel;

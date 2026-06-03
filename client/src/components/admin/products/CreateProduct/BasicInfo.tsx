@@ -4,7 +4,6 @@ import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessa
 import { useState } from "react";
 //import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../ui/select";
 import { Input } from "../../../../ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../ui/select';
 //import { Plus } from "lucide-react";
 import { Textarea } from "../../../../ui/textarea";
 import RecursiveCategorySelector from './RecursiveCategorySelector';
@@ -199,7 +198,8 @@ const BasicInfo = ({ validateSection, tab, form, generateSKU, categories, }) => 
                   <FormControl>
                     <Input
                       placeholder="Enter primary product color (e.g. Red)"
-                      {...field}
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value)}
                     />
                   </FormControl>
                   <FormMessage />

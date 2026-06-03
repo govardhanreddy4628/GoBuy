@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../../ui/dialog';
 import { Agent, AgentSettings as AgentSettingsType } from '../types/Agent';
@@ -16,15 +16,22 @@ interface AgentSettingsProps {
 
 export function AgentSettings({ agent, onSettingsUpdate }: AgentSettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [settings, setSettings] = useState<AgentSettingsType>(
-    agent?.settings || {
-      temperature: 0.7,
-      maxTokens: 1000,
-      systemPrompt: '',
-      enableFileUpload: true,
-      enableHistory: true
-    }
-  );
+
+  const defaultSettings: AgentSettingsType = {
+    temperature: 0.7,
+    maxTokens: 1000,
+    systemPrompt: '',
+    enableFileUpload: true,
+    enableHistory: true
+  };
+
+  const [settings, setSettings] = useState<AgentSettingsType>(defaultSettings);
+
+  useEffect(() => {
+  if (agent?.settings) {
+    setSettings(agent.settings);
+  }
+}, [agent?.id, agent?.settings]);
 
   const handleSave = () => {
     onSettingsUpdate(settings);
@@ -37,13 +44,14 @@ export function AgentSettings({ agent, onSettingsUpdate }: AgentSettingsProps) {
     }
   };
 
+
   if (!agent) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
           className="text-admin-sidebar-fg/70 hover:text-admin-sidebar-fg hover:bg-admin-sidebar-hover"
         >
@@ -60,7 +68,7 @@ export function AgentSettings({ agent, onSettingsUpdate }: AgentSettingsProps) {
         <p id="agent-settings-description" className="sr-only">
           Configure settings for {agent.name} including temperature, max tokens, system prompt, and feature toggles.
         </p>
-        
+
         <div className="space-y-6 py-4">
           {/* Temperature */}
           <div className="space-y-2">
@@ -118,7 +126,7 @@ export function AgentSettings({ agent, onSettingsUpdate }: AgentSettingsProps) {
                 onCheckedChange={(checked) => setSettings(prev => ({ ...prev, enableFileUpload: checked }))}
               />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">Chat History</Label>

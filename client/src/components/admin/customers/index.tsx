@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Customer, customersData } from './customersData';
+import { customersData } from './customersData';
 import Actions from './Actions';
 import ActionModal from './ActionModal';
 import AddCustomerButton from './AddCustomerButton';
@@ -9,11 +9,14 @@ import BulkExport from '../table/BulkExport';
 import RowsPerPage from '../table/RowsPerPage';
 // import Table from './table';
 import DataTable, { Column } from "./DataTable";
+import { useCustomers } from '../context/customerContext';
+import { formatDate } from '../utils/formatDate';
+import { Customer } from '../types/customers';
 //import useDebouncedValue from "../table/useDebouncedSearch";
 
 
+
 const CustomersTable: React.FC = () => {
-    const [customers, setCustomers] = useState<Customer[]>(customersData);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(5);
@@ -23,25 +26,9 @@ const CustomersTable: React.FC = () => {
     const [actionType, setActionType] = useState<'add' | 'edit' | 'view' | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [selectedCustomerForAction, setSelectedCustomerForAction] = useState<Customer | null>(null);
-    const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>(customers);
+    const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
     const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
-
-
-    //customer data fetching from backend
-    // useEffect(()=>{
-    //     const fetchCustomers = async () => {
-    //         try {
-    //             const response = await fetch('http://localhost:8080/api/v1/customers');
-    //             const data = await response.json();
-    //             console.log('Fetched customers:', data);
-    //             setCustomers(data);
-    //         } catch (error) {
-    //             console.error('Failed to fetch customers:', error);
-    //         }
-    //     }
-    //     fetchCustomers();
-    // },[]);
-
+    const { customers, loading, addCustomer, updateCustomer } = useCustomers();
 
 
     // const debouncedSearch = useDebouncedValue(searchTerm, 300);
@@ -57,7 +44,6 @@ const CustomersTable: React.FC = () => {
     //   }, [customers, debouncedSearch]);
 
 
-
     useEffect(() => {
         const term = searchTerm.toLowerCase();
         const filtered = customers.filter(
@@ -70,28 +56,33 @@ const CustomersTable: React.FC = () => {
         //setCurrentPage(1); // reset to first page when filtering
     }, [searchTerm, customers]);
 
-
     const closeModal = () => {
         setShowModal(false);
         setSelectedCustomerForAction(null);
     };
 
+    // const handleFormSubmit = (customer: Customer) => {
+    //     setCustomers((prev) => {
+    //         const exists = prev.find((c) => c.id === customer.id);
+    //         if (exists) {
+    //             // Update
+    //             return prev.map((c) => (c.id === customer.id ? customer : c));
+    //         } else {
+    //             // Add
+    //             return [...prev, customer];
+    //         }
+    //     });
+    //     closeModal();
+    // };
 
-    const handleFormSubmit = (customer: Customer) => {
-        setCustomers((prev) => {
-            const exists = prev.find((c) => c.id === customer.id);
-            if (exists) {
-                // Update
-                return prev.map((c) => (c.id === customer.id ? customer : c));
-            } else {
-                // Add
-                return [...prev, customer];
-            }
-        });
+    const handleFormSubmit = async (customer: Customer) => {
+        if (customer.id) {
+            await updateCustomer(customer.id, customer);
+        } else {
+            await addCustomer(customer);
+        }
         closeModal();
     };
-
-
 
     // Sorting
     const sortedData = useMemo(() => {
@@ -155,37 +146,37 @@ const CustomersTable: React.FC = () => {
 
 
     // Select/deselect individual row on click or Select/deselect multiple rows on click with shift 
-    const handleSelectRow = (
-        id: Customer["id"],
-        index: number,
-        shiftKey: boolean,
-        checked: boolean
-    ) => {
-        if (shiftKey && lastClickedIndex !== null) {
-            // Range boundaries
-            const start = Math.min(lastClickedIndex, index);
-            const end = Math.max(lastClickedIndex, index);
-            const idsInRange = customersData.slice(start, end + 1).map((c) => c.id);
+    // const handleSelectRow = (
+    //     id: Customer["id"],
+    //     index: number,
+    //     shiftKey: boolean,
+    //     checked: boolean
+    // ) => {
+    //     if (shiftKey && lastClickedIndex !== null) {
+    //         // Range boundaries
+    //         const start = Math.min(lastClickedIndex, index);
+    //         const end = Math.max(lastClickedIndex, index);
+    //         const idsInRange = customersData.slice(start, end + 1).map((c) => c.id);
 
-            setSelected((prev) => {
-                if (checked) {
-                    // ✅ Add whole range
-                    const newSelection = new Set(prev);
-                    idsInRange.forEach((rowId) => newSelection.add(rowId));
-                    return Array.from(newSelection);
-                } else {
-                    // ❌ Remove whole range
-                    return prev.filter((rowId) => !idsInRange.includes(rowId));
-                }
-            });
-        } else {
-            // Normal single toggle
-            setSelected((prev) =>
-                checked ? [...prev, id] : prev.filter((i) => i !== id)
-            );
-            setLastClickedIndex(index);
-        }
-    };
+    //         setSelected((prev) => {
+    //             if (checked) {
+    //                 // ✅ Add whole range
+    //                 const newSelection = new Set(prev);
+    //                 idsInRange.forEach((rowId) => newSelection.add(rowId));
+    //                 return Array.from(newSelection);
+    //             } else {
+    //                 // ❌ Remove whole range
+    //                 return prev.filter((rowId) => !idsInRange.includes(rowId));
+    //             }
+    //         });
+    //     } else {
+    //         // Normal single toggle
+    //         setSelected((prev) =>
+    //             checked ? [...prev, id] : prev.filter((i) => i !== id)
+    //         );
+    //         setLastClickedIndex(index);
+    //     }
+    // };
 
 
     const highlightMatch = (text: string, query: string) => {
@@ -205,8 +196,6 @@ const CustomersTable: React.FC = () => {
         );
     };
 
-
-
     const customerColumns: Column<Customer>[] = [
         {
             accessor: "select",
@@ -225,14 +214,14 @@ const CustomersTable: React.FC = () => {
                 <input
                     type="checkbox"
                     checked={selected.includes(cust.id)}
-                    onChange={(e) =>
-                        handleSelectRow(
-                            cust.id,
-                            idx,
-                            (e.nativeEvent as MouseEvent).shiftKey,
-                            e.target.checked
-                        )
-                    }
+                    // onChange={(e) =>
+                    //     handleSelectRow(
+                    //         cust.id,
+                    //         idx,
+                    //         (e.nativeEvent as MouseEvent).shiftKey,
+                    //         e.target.checked
+                    //     )
+                    // }
                     aria-label={`Select customer ${cust.name}`}
                 />
             ),
@@ -258,12 +247,12 @@ const CustomersTable: React.FC = () => {
             cellStyles: "text-nowrap min-w-44",
         },
         { accessor: "email", label: "Email", render: (cust) => highlightMatch(cust.email, searchTerm) },
-        { accessor: "phone", label: "Phone", render: (cust) => highlightMatch(cust.phone, searchTerm), cellStyles: "whitespace-nowrap text-sm" },
+        { accessor: "phone", label: "Phone", render: (cust) => highlightMatch(String(cust.phone ?? ""), searchTerm), cellStyles: "whitespace-nowrap text-sm" },
         { accessor: "address", label: "Address", render: (cust) => <div className="text-gray-700 dark:text-gray-300 max-w-[220px] min-w-[150px] line-clamp-2 text-xs">{highlightMatch(cust.address, searchTerm)}</div> },
-        { accessor: "joined", label: "Joined", render: (cust) => highlightMatch(cust.joined, searchTerm), cellStyles: "text-nowrap min-w-36", },
+        { accessor: "joined", label: "Joined", render: (cust) => highlightMatch(formatDate(cust.joined), searchTerm), cellStyles: "text-nowrap min-w-36" },
         { accessor: "orders", label: "Orders", sortable: true, render: (cust) => cust.orders, cellStyles: "text-nowrap min-w-24", },
-        { accessor: "totalSpend", label: "Total Spend", sortable: true, render: (cust) => `$${cust.totalSpend.toFixed(2)}`, cellStyles: "text-nowrap min-w-36", },
-        { accessor: "lastOrder", label: "Last Order", render: (cust) => cust.lastOrder, cellStyles: "text-nowrap min-w-24", },
+        { accessor: "totalSpend", label: "Total Spend", sortable: true, render: (cust) => `₹${cust.totalSpend.toFixed(2)}`, cellStyles: "text-nowrap min-w-36", },
+        { accessor: "lastOrder", label: "Last Order", render: (cust) => formatDate(cust.lastOrder), cellStyles: "text-nowrap min-w-24", },
         {
             accessor: "status",
             label: "Status",
@@ -292,8 +281,7 @@ const CustomersTable: React.FC = () => {
         },
     ];
 
-
-
+    if (loading) return <div className='w-full h-screen flex items-center justify-center'>Loading...</div>;
 
     return (
         <div className="p-6 text-gray-900 dark:text-gray-100">
@@ -331,9 +319,7 @@ const CustomersTable: React.FC = () => {
             />
 
             {/* Modal with Form */}
-            <ActionModal actionType={actionType} showModal={showModal} setShowModal={setShowModal} selectedCustomer={selectedCustomerForAction} handleFormSubmit={handleFormSubmit} />
-
-
+            {/* <ActionModal actionType={actionType} showModal={showModal} setShowModal={setShowModal} selectedCustomer={selectedCustomerForAction} handleFormSubmit={handleFormSubmit} /> */}
 
             {rowsPerPage !== -1 && (
                 <div className="flex justify-between items-center mt-4 text-gray-700 dark:text-gray-300">

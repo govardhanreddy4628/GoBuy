@@ -6,6 +6,7 @@ interface IUser extends Document {
   password: string;
   phoneNumber: number;
 
+  authProvider: "custom" | "google";
   googleId?: string | null;
 
   isVerified: boolean;
@@ -22,6 +23,7 @@ interface IUser extends Document {
 
   address_details?: mongoose.Types.ObjectId[];
   shopping_cart?: mongoose.Types.ObjectId[];
+  recentlyViewed?: mongoose.Types.ObjectId[];
   orderHistory?: mongoose.Types.ObjectId[];
 
   tempMFASecret?: string | null;
@@ -67,7 +69,7 @@ const userSchema = new mongoose.Schema<IUserDocument>(
       default: null,
     },
 
-    //authProvider: { type: String, enum: ["custom", "google"], required: true },
+    authProvider: { type: String, enum: ["custom", "google"], required: true },
     googleId: { type: String, default: null },
 
     isVerified: {
@@ -97,6 +99,13 @@ const userSchema = new mongoose.Schema<IUserDocument>(
       {
         type: mongoose.Schema.ObjectId,
         ref: "cart",
+      },
+    ],
+
+    recentlyViewed: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
       },
     ],
 
@@ -143,7 +152,7 @@ const userSchema = new mongoose.Schema<IUserDocument>(
       verified: { type: Boolean, default: false }, // during first setup
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Virtual ID
@@ -160,5 +169,79 @@ userSchema.set("toJSON", {
   },
 });
 
-const UserModel = mongoose.model<IUserDocument>("user", userSchema);
+const UserModel = mongoose.model<IUserDocument>("User", userSchema);
 export default UserModel;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// // userModel for chat application
+
+// import mongoose from "mongoose";
+
+// const userSchema = new mongoose.Schema(
+//   {
+//     phoneNumber: { type: String, unique: true, required: true },
+
+//     name: { type: String },
+//     about: { type: String, default: "Hey there! I am using WhatsApp." },
+
+//     profilePic: {
+//       url: String,
+//       public_id: String,
+//     },
+
+//     lastSeen: { type: Date },
+//     isOnline: { type: Boolean, default: false },
+
+//     statusPrivacy: {
+//       type: String,
+//       enum: ["everyone", "contacts", "nobody"],
+//       default: "everyone",
+//     },
+
+//     lastSeenPrivacy: {
+//       type: String,
+//       enum: ["everyone", "contacts", "nobody"],
+//       default: "everyone",
+//     },
+
+//     readReceipts: { type: Boolean, default: true },
+
+//     blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+//     contacts: [
+//       {
+//         user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+//         name: String,
+//       },
+//     ],
+
+//     deviceInfo: [
+//       {
+//         deviceId: String,
+//         platform: String,
+//         lastActive: Date,
+//       },
+//     ],
+//   },
+//   { timestamps: true }
+// );
+
+// export default mongoose.model("User", userSchema);

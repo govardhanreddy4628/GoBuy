@@ -543,6 +543,66 @@ export const updateCategoryController = async (req: Request, res: Response) => {
   }
 };
 
+// export const getCategoryTree = asyncHandler(
+//   async (req: Request, res: Response) => {
+//     try {
+//       // ✅ Check cache first
+//       const cachedTree = await redisClient.get(CATEGORY_TREE_KEY);
+//       if (cachedTree) {
+//         res.status(200).json({
+//           success: true,
+//           message: "Category tree fetched from cache",
+//           data: JSON.parse(cachedTree),
+//         });
+//         return;
+//       }
+
+//       // Fetch all active categories
+//       const categories: any[] = await CategoryModel.find({ isActive: true })
+//         .lean()
+//         .sort({ name: 1 }); // optional: sort alphabetically;
+
+//       // Build category map
+//       const categoryMap: Record<string, any> = {};
+//       categories.forEach((cat) => {
+//         categoryMap[cat._id.toString()] = { ...cat, children: [] };
+//       });
+
+//       // Build tree
+//       const tree: any[] = [];
+//       categories.forEach((cat) => {
+//         if (
+//           cat.parentCategoryId &&
+//           Types.ObjectId.isValid(cat.parentCategoryId)
+//         ) {
+//           const parent = categoryMap[cat.parentCategoryId.toString()];
+//           if (parent) parent.children.push(categoryMap[cat._id.toString()]);
+//         } else {
+//           tree.push(categoryMap[cat._id.toString()]);
+//         }
+//       });
+
+//       // ✅ Save tree to Redis for 1 hour
+//       await redisClient.set(CATEGORY_TREE_KEY, JSON.stringify(tree), {
+//         EX: 3600,
+//       });
+
+//       res.status(200).json({
+//         success: true,
+//         message: "Category tree fetched successfully",
+//         data: tree,
+//       });
+//     } catch (err: any) {
+//       console.error("Error fetching category tree:", err);
+//       res.status(500).json({
+//         success: false,
+//         message: err.message || "Internal server error",
+//       });
+//     }
+//   },
+// );
+
+
 export const getCategoryTree = asyncHandler(
   async (req: Request, res: Response) => {
     try {
@@ -559,8 +619,16 @@ export const getCategoryTree = asyncHandler(
 
       // Fetch all active categories
       const categories: any[] = await CategoryModel.find({ isActive: true })
-        .lean()
-        .sort({ name: 1 }); // optional: sort alphabetically;
+        .lean();
+
+      // 🔥 PRIORITY SORT (Fashion first)
+      categories.sort((a, b) => {
+        if (a.name.toLowerCase() === "fashion") return -1;
+        if (b.name.toLowerCase() === "fashion") return 1;
+
+        // fallback alphabetical for others
+        return a.name.localeCompare(b.name);
+      });
 
       // Build category map
       const categoryMap: Record<string, any> = {};
@@ -599,8 +667,9 @@ export const getCategoryTree = asyncHandler(
         message: err.message || "Internal server error",
       });
     }
-  },
+  }
 );
+
 
 export const getAllCategoryController = async (
   req: Request,

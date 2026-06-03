@@ -17,8 +17,13 @@ import { ProductProvider, useProducts } from "../../context/productsContext";
 import { Product } from "../../types/product";
 //import { toast } from "sonner";
 
+
+interface ProductsPageContentProps {
+  showBreadcrumb?: boolean;
+  showStats?: boolean;
+}
 /* ------------------------- INNER PAGE ------------------------------ */
-const ProductsPageContent = () => {
+const ProductsPageContent = ({ showBreadcrumb = true, showStats = true }: ProductsPageContentProps) => {
   const navigate = useNavigate();
   const { products, pagination, filters, isLoading, isFetching, setPage, setFilters, deleteProduct } = useProducts();
   // const [statusFilter, setStatusFilter] = useState("all");
@@ -79,18 +84,36 @@ const ProductsPageContent = () => {
 
   const handleAddNew = () => navigate("/products/create");
 
+  const getPages = () => {
+    const pages = [];
+    const maxVisible = 5;
+
+    let start = Math.max(1, pagination.page - 2);
+    let end = Math.min(pagination.totalPages, start + maxVisible - 1);
+
+    if (end - start < maxVisible - 1) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  };
+
 
 
   /* -------------------- Loading / Error -------------------- */
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
-    );
-  }
+  return (
+    <div className="space-y-3">
+      {[...Array(10)].map((_, i) => (
+        <Skeleton key={i} className="h-14 w-full rounded-md" />
+      ))}
+    </div>
+  );
+}
 
   // if (error) {
   //   return <p className="text-destructive">{error}</p>;
@@ -100,17 +123,19 @@ const ProductsPageContent = () => {
   return (
     <div className="space-y-6 py-4 px-4">
       {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Products</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      {showBreadcrumb && (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Products</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -154,12 +179,14 @@ const ProductsPageContent = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Products" value={stockStats.total} icon={Package} color="text-muted-foreground"/>
-        <StatCard title="In Stock" value={stockStats.inStock} icon={Package} color="text-success"/>
-        <StatCard title="Low Stock" value={stockStats.lowStock} icon={AlertTriangle} color="text-warning"/>
-        <StatCard title="Out of Stock" value={stockStats.outOfStock} icon={XCircle} color="text-destructive"/>
-      </div>
+      {showStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard title="Total Products" value={stockStats.total} icon={Package} color="text-muted-foreground" />
+          <StatCard title="In Stock" value={stockStats.inStock} icon={Package} color="text-success" />
+          <StatCard title="Low Stock" value={stockStats.lowStock} icon={AlertTriangle} color="text-warning" />
+          <StatCard title="Out of Stock" value={stockStats.outOfStock} icon={XCircle} color="text-destructive" />
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -247,26 +274,23 @@ const ProductsPageContent = () => {
             <Pagination>
               <PaginationContent>
                 <PaginationPrevious
-                  onClick={() =>
-                    pagination.page > 1 && setPage(pagination.page - 1)
-                  }
+                  onClick={() => pagination.page > 1 && setPage(pagination.page - 1)}
                 />
 
-                {Array.from({ length: pagination.totalPages }).map((_, i) => (
-                  <PaginationItem key={i}>
+                {getPages().map((pageNum) => (
+                  <PaginationItem key={pageNum}>
                     <PaginationLink
-                      isActive={pagination.page === i + 1}
-                      onClick={() => setPage(i + 1)}
+                      isActive={pagination.page === pageNum}
+                      onClick={() => setPage(pageNum)}
                     >
-                      {i + 1}
+                      {pageNum}
                     </PaginationLink>
                   </PaginationItem>
                 ))}
 
                 <PaginationNext
                   onClick={() =>
-                    pagination.page < pagination.totalPages &&
-                    setPage(pagination.page + 1)
+                    pagination.page < pagination.totalPages && setPage(pagination.page + 1)
                   }
                 />
               </PaginationContent>
@@ -312,7 +336,7 @@ const StatCard = ({
 }: {
   title: string;
   value: number;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   color?: string;
 }) => (
   <Card>

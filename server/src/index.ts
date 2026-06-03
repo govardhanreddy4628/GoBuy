@@ -5,17 +5,10 @@ import { app } from "./app.js";
 import "colors";
 import connectDB from "./config/connectDB.js";
 import redisClient from "./config/connectRedis.js";
-import Razorpay from "razorpay";
 import "./jobs/cleanupJob.js";
 import "./agent/agent.js";
-
-
-
-export const razorpayInstance = new Razorpay({
-  key_id: process.env.RAZORPAY_API_KEY,
-  key_secret: process.env.RAZORPAY_APT_SECRET,
-});
-
+import { createServer } from "http";
+import { initializeSockets } from "./sockets/index.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -23,7 +16,14 @@ const startServer = async () => {
   try {
     await connectDB();           // MongoDB connection
     await redisClient.connect(); // Redis connection
-    app.listen(PORT, () => {
+
+    const httpServer = createServer(app);
+
+    // ✅ Initialize all sockets here
+    const io = initializeSockets(httpServer);
+    app.set("io", io);    //This stores the Socket.IO instance inside Express. Later, you can access it anywhere like this: const io = req.app.get("io");
+
+    httpServer.listen(PORT, () => {
       console.log(
         `🚀 Server running on ${process.env.NODE_ENV} mode on port ${PORT}`.bgCyan
           .white

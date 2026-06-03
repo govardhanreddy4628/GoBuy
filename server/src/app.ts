@@ -31,21 +31,39 @@ import { initAssistantChat } from "./sockets/initAssistantChat.js";
 import { socketAuthenticator } from "./middleware/socketAuthenticator.js";
 import uploadRoutes from "./routes/uploadRoutes.js";  
 import wishlistRouter from "./routes/wishlistRoutes.js";
+import calendarRouter from "./routes/calendarRoutes.js";
+import addressRouter from "./routes/addressRoutes.js";
+import orderRouter from "./routes/orderRoutes.js";
+import reviewsRouter from "./routes/reviewRoutes.js";
+import questionsRouter from "./routes/prodQARoutes.js";
+import analyticsRouter from "./routes/analyticsRoutes.js";
+import searchRouter from "./routes/searchRoutes.js";
+import { createEmbedding } from "./services/embeddingService.js";
+import agentRouter from "./routes/agentRoutes.js";
+import blogRouter from "./routes/blogRoutes.js";
+import { initializeSockets } from "./sockets/index.js";
+import { inngestHandler } from "./inngest/handler.js";
 //import authRoutes from "./routes/authRoutes.js"
 
 const app = express();
-const server = http.createServer(app);
 
+// ---------------- CORS ----------------
 const allowedOrigins = [
   process.env.CLIENT_URL_DEV,
   process.env.CLIENT_URL_PROD,
 ].filter(Boolean);
 
-
 const corsOptions: cors.CorsOptions = {
   origin(origin, callback) {
+    // 🚫 Skip logging for server-to-server requests (like Inngest)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // ✅ Only log real browser requests
     console.log("🧪 CORS origin check:", origin);
-    if (!origin || allowedOrigins.includes(origin)) {
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -56,12 +74,6 @@ const corsOptions: cors.CorsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
-app.use((req, res, next) => {
-  console.log("HEADERS SENT:", res.getHeaders());
-  next();
-});
-
-
 
 // default middleware for any mern project
 app.use(cors(corsOptions)); // refer npm cors site for more info. and this middleware should be at top.
@@ -69,24 +81,51 @@ app.use(cors(corsOptions)); // refer npm cors site for more info. and this middl
 // ✅ Handle preflight requests globally
 app.options("*", cors(corsOptions));
 
-app.use(cookieParser());
+// app.use((req, res, next) => {
+//   console.log("HEADERS SENT:", res.getHeaders());
+//   next();
+// });
 
 app.use((req, res, next) => {
+  if (req.originalUrl.startsWith("/api/inngest")) return next();
+
+  console.log("HEADERS SENT:", res.getHeaders());
+  next();
+});
+
+
+// ---------------- DEBUG ----------------
+// app.use((req, res, next) => {
+//   console.log("🌍 CORS origin received:", req.headers.origin);
+//   next();
+// });
+
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith("/api/inngest")) return next();
+
   console.log("🌍 CORS origin received:", req.headers.origin);
   next();
 });
 
+
+// ---------------- MIDDLEWARE ----------------
+app.use(cookieParser());
 app.use(express.static("public")); //public is a folder name where we can store images
 app.use(express.json({ limit: "32kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(helmet({crossOriginResourcePolicy: false}))
-app.use(morgan("dev"));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
+// app.use(morgan("dev"));
+
+app.use(
+  morgan("dev", {
+    skip: (req) => req.originalUrl.includes("/api/inngest"),
+  })
+);       // This will hide all Inngest logs in terminal since they are very repetitive. You can customize the skip condition as needed.
+//app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 app.use(express.static("public"));   // serve static assets
 
-app.use("/api/inngest", serve({ client: inngest, functions }));
-
-
+// ---------------- INNGEST ----------------
+app.use("/api/inngest", inngestHandler);
 
 
 // ---------------------- API ROUTES ----------------------
@@ -99,43 +138,45 @@ app.use("/api/v1/offers", offersRoutes)
 app.use("/api/v1/upload", uploadRoutes);
 app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/wishlist", wishlistRouter);
+app.use("/api/v1/calendar", calendarRouter);
 // app.use("/api/v1/coupons", couponRouter);
 // app.use("/api/v1/payments", paymentRoutes);
-// app.use("/api/v1/order", orderRoutes);
-// app.use("/api/v1/address", addressRoutes);
+app.use("/api/v1/order", orderRouter);
+app.use("/api/v1/address", addressRouter);
+app.use("/api/v1/reviews", reviewsRouter);
+app.use("/api/v1/product-qa", questionsRouter);
+app.use("/api/v1/analytics", analyticsRouter)
+app.use("/api/v1/searchbar", searchRouter)
 // app.use("/api/v1/event", eventRoutes);
+app.use("/api/v1/blogs", blogRouter);
 
+app.use("/api/v1/agents", agentRouter);
 //app.post("/assistant/query", handleQuery);
 
 app.use("/api/v1/customers",  (req, res) => {
   res.status(200).json(customersData)
 })
 
-
 app.get("/api/getkey", (req, res) => {
   res.status(200).json({ key: process.env.RAZORPAY_API_KEY });
 });
 
-// ---------------------- SOCKET.IO ----------------------
-const io = new Server(server, {
-  cors: { origin: process.env.CLIENT_URL_PROD || "http://localhost:5173", methods: ["GET", "POST"], credentials:true },
-});
 
-app.set("io", io);
+// const io = app.get("io");
+// io.use((socket, next) => {socketAuthenticator(socket, next)});
 
-io.use((socket, next) => {socketAuthenticator(socket, next)});
 
-// Use separate namespaces
-const adminNamespace = io.of("/admin");
-adminNamespace.use((socket, next) => socketAuthenticator(socket, next)); 
+console.log("Gemini key:", process.env.GEMINI_API_KEY);
+async function test() {
+  const embedding = await createEmbedding(
+    "Green cotton polo tshirt for men"
+  );
 
-const assistantNamespace = io.of("/assistant");
-assistantNamespace.use((socket, next) => socketAuthenticator(socket, next)); 
+  console.log("Embedding length:", embedding?.length);
+  console.log("First values:", embedding?.slice(0,5));
 
-// Initialize chat modules
-initAdminChat(adminNamespace);
-initAssistantChat(assistantNamespace);
-
+}
+test();
 
 
 // Optional: Get chat history
@@ -168,8 +209,6 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 
-
-
 // // Error handler (must be at last in code)
 app.use(errorHandler);
 
@@ -178,4 +217,5 @@ app.use(express.static(path.join(DIRNAME, "/client/dist")));  // React build fil
 app.use("*", (_, res) => {
   res.sendFile(path.resolve(DIRNAME, "client", "dist", "index.html"));
 });
-export { server as app }; // export the server
+
+export { app }; // export the server

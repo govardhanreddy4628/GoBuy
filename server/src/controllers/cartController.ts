@@ -1,17 +1,18 @@
 import { Request, Response } from "express";
 import CartModel from "../models/cartModel.js";
-import UserModel from "../models/userModel.js";
-import productModel from "../models/productModel.js";
+import productModel, { IProduct } from "../models/productModel.js";
 
+// ✅ GET USER CART
 export const getCartItemsController = async (req: Request, res: Response) => {
   try {
     const userId = req.user?._id;
+
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     const cartItems = await CartModel.find({ userId })
-      .populate("productId", "name price images discount")
+      .populate("productId", "name listedPrice finalPrice discountPercentage images quantityInStock brand")
       .lean();
 
     return res.status(200).json({
@@ -26,26 +27,161 @@ export const getCartItemsController = async (req: Request, res: Response) => {
   }
 };
 
-
+// ✅ ADD TO CART
 export const addToCartController = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?._id;
+    const userId = req.user?._id || req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({success: false, message: "User not authenticated" });
-    }
-
-    const { productId, quantity=1, size, color } = req.body;
-
-    if (!productId || !quantity || quantity <= 0) {
-      return res.status(400).json({
-        message: "Product ID and quantity are required",
-        error: true,
+      return res.status(401).json({
         success: false,
+        message: "User not authenticated",
       });
     }
 
-     const product = await productModel.findById(productId);
+    const { productId, quantity = 1, size = null, color = null } = req.body;
+
+    console.log("BODY:", req.body);
+    console.log("USER:", req.user);
+
+    if (!productId || quantity <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product or quantity",
+      });
+    }
+
+    
+    const product = await productModel.findById(productId);
+    
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+    
+    if (
+      product.quantityInStock !== undefined &&
+      quantity > product.quantityInStock
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `Only ${product.quantityInStock} items available`,
+      });
+    }
+
+    // 🔥 IMPORTANT: include size + color
+    const existingItem = await CartModel.findOne({
+      userId,
+      productId,
+      size,
+      color,
+    });
+
+    const expiry = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+
+    // ITEM ALREADY IN CART
+    if (existingItem) {
+      const newQty = existingItem.quantity + quantity;
+
+      existingItem.quantity = Math.min(newQty, product.quantityInStock);
+      existingItem.expiresAt = expiry;
+
+      await existingItem.save();
+      await productModel.findByIdAndUpdate(productId, { $inc: { cartAdds: 1 } });
+
+      return res.json({
+        success: true,
+        message: "Cart updated",
+        data: existingItem,
+      });
+    }
+
+    // NEW ITEM
+    const newItem = await CartModel.create({
+      userId,
+      productId,
+      quantity,
+      size,
+      color,
+      expiresAt: expiry,
+    });
+
+    // 🔥 analytics
+    await productModel.findByIdAndUpdate(productId, {
+      $inc: { cartAdds: 1 },
+    });
+    
+    return res.status(201).json({
+      success: true,
+      message: "Item added",
+      data: newItem,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ✅ DELETE ITEM
+export const deleteCartItemController = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    const { cartItemId } = req.params;
+
+    if (!userId || !cartItemId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request",
+      });
+    }
+
+    await CartModel.deleteOne({ _id: cartItemId, userId });
+
+    return res.json({
+      success: true,
+      message: "Item removed",
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ✅ UPDATE ITEM
+export const updateCartItemController = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    const { cartItemId } = req.params;
+    const { quantity, size, color } = req.body;
+
+    if (!userId || !cartItemId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request",
+      });
+    }
+
+    if (quantity <= 0) {
+      await CartModel.deleteOne({ _id: cartItemId, userId });
+      return res.json({ success: true, message: "Item removed" });
+    }
+
+    const item = await CartModel.findOne({ _id: cartItemId, userId });
+
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found",
+      });
+    }
+
+    const product = await productModel.findById(item.productId);
 
     if (!product) {
       return res.status(404).json({
@@ -57,176 +193,20 @@ export const addToCartController = async (req: Request, res: Response) => {
     if (quantity > product.quantityInStock) {
       return res.status(400).json({
         success: false,
-        message: `Only ${product.quantityInStock} items available`,
+        message: `Only ${product.quantityInStock} available`,
       });
     }
 
-    const existingCartItem = await CartModel.findOne({
-      productId,
-      userId,
-      size: size || null,
-      color: color || null,
-    });
+    item.quantity = quantity;
+    item.size = size ?? item.size;
+    item.color = color ?? item.color;
+    item.expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
 
-     // 🗑 Auto remove if quantity = 0
-    if (quantity === 0) {
-      if (existingCartItem) {
-        await CartModel.deleteOne({ _id: existingCartItem._id });
-      }
+    await item.save();
 
-      return res.status(200).json({
-        success: true,
-        message: "Item removed from cart",
-      });
-    }
-
-    const newExpiryDate = new Date(
-      Date.now() + 60 * 24 * 60 * 60 * 1000
-    );
-
-    if (existingCartItem) {
-      const updatedQuantity = existingCartItem.quantity + quantity;
-
-      if (updatedQuantity > product.quantityInStock) {
-        return res.status(400).json({
-          success: false,
-          message: `Only ${product.quantityInStock} items available`,
-        });
-      }
-
-      existingCartItem.quantity = updatedQuantity;
-      existingCartItem.expiresAt = newExpiryDate; // ✅ reset expiration
-      await existingCartItem.save();
-
-       return res.status(200).json({
-        success: true,
-        message: "Cart updated",
-        data: existingCartItem,
-      });
-    } 
-
-     // ➕ Create new cart item
-    const newCartItem = await CartModel.create({
-      userId,
-      productId,
-      quantity,
-      size: size || null,
-      color: color || null,
-      expiresAt: newExpiryDate, // ✅ set expiration
-    });
-
-    return res.status(201).json({
+    return res.json({
       success: true,
-      message: "Item added to cart",
-      cartItemId: newCartItem._id,
-    });
-
-  } catch (error: any) {
-    console.error("Cart Error:", error);
-    return res.status(500).json({
-      message: error.message,
-      error: true,
-      success: false,
-    });
-  }
-};
-
-
-export const deleteCartItemController = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?._id;
-
-    if (!userId) {
-      return res.status(401).json({ message: "User not authenticated" });
-    }
-
-    const { cartItemId } = req.params;
-
-
-    if (!cartItemId) {
-      return res.status(400).json({
-        message: "Cart item ID is required",
-        error: true,
-        success: false,
-      });
-    }
-
-    const cartItem = await CartModel.findOne({
-      _id: cartItemId,
-      userId,
-    });
-
-    if (!cartItem) {
-      return res.status(404).json({
-        message: "Cart item not found",
-        error: true,
-        success: false,
-      });
-    }
-
-    await CartModel.deleteOne({ _id: cartItemId, userId });
-
-    return res.status(200).json({
-      message: "Cart item deleted successfully",
-      error: false,
-      success: true,
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      message: error.message,
-      error: true,
-      success: false,
-    });
-  }
-};
-
-
-
-export const updateCartItemController = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?._id;
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
-
-    const { quantity, size, color } = req.body;
-    const { cartItemId } = req.params;
-
-    if (!cartItemId || typeof quantity !== "number") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid request",
-      });
-    }
-
-    if (quantity <= 0) {
-      await CartModel.deleteOne({ _id: cartItemId, userId });
-      return res.status(200).json({
-        success: true,
-        message: "Item removed from cart",
-      });
-    }
-
-    const cartItem = await CartModel.findOneAndUpdate(
-      { _id: cartItemId, userId },
-      {
-        quantity,
-        ...(size && { size }),
-        ...(color && { color }),
-      },
-      { new: true }
-    );
-
-    if (!cartItem) {
-      return res.status(404).json({
-        success: false,
-        message: "Cart item not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: cartItem,
+      data: item,
     });
   } catch (error: any) {
     return res.status(500).json({
@@ -236,96 +216,112 @@ export const updateCartItemController = async (req: Request, res: Response) => {
   }
 };
 
-
-export const updateCartQuantityController = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?._id;
-    const { productId, quantity } = req.body;
-
-    if (quantity < 0) {
-      return res.status(400).json({ success: false, message: "Invalid quantity" });
-    }
-
-    const product = await productModel.findById(productId);
-    if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
-    }
-
-    if (quantity > product.quantityInStock) {
-      return res.status(400).json({
-        success: false,
-        message: `Only ${product.quantityInStock} items available`,
-      });
-    }
-
-    const cartItem = await CartModel.findOne({ userId, productId });
-
-    if (!cartItem) {
-      return res.status(404).json({ success: false, message: "Cart item not found" });
-    }
-
-    if (quantity === 0) {
-      await CartModel.deleteOne({ _id: cartItem._id });
-      return res.json({ success: true, message: "Item removed" });
-    }
-
-    cartItem.quantity = quantity;
-    cartItem.expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
-    await cartItem.save();
-
-    return res.json({ success: true, message: "Quantity updated", data: cartItem });
-
-  } catch (error) {
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-
-
-// POST /cart/merge
+// 🔥 MERGE CART (IMPORTANT)
 export const mergeCart = async (req: Request, res: Response) => {
   try {
     const userId = req.user?._id;
     const { items } = req.body;
 
-    for (const item of items) {
-      const { productId, quantity } = item;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
 
-      const product = await productModel.findById(productId);
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // ✅ Normalize items (include variants)
+    const normalizedItems = items.map((i) => ({
+      productId: i.productId,
+      quantity: i.quantity,
+      size: i.size || null,
+      color: i.color || null,
+    }));
+
+    const productIds = normalizedItems.map((i) => i.productId);
+
+    // 🔥 Fetch all products
+    const products = await productModel
+      .find({ _id: { $in: productIds } })
+      .lean<IProduct[]>();
+
+    const productMap = new Map<string, IProduct>();
+
+    products.forEach((p) => {
+      productMap.set(String(p._id), p);
+    });
+
+    // 🔥 Fetch existing cart items
+    const existingItems = await CartModel.find({
+      userId,
+      productId: { $in: productIds },
+    });
+
+    // 🔥 Key = productId + size + color
+    const existingMap = new Map();
+    existingItems.forEach((item) => {
+      const key = `${item.productId}_${item.size}_${item.color}`;
+      existingMap.set(key, item);
+    });
+
+    const bulkOps: any[] = [];
+
+    for (const item of normalizedItems) {
+      const { productId, quantity, size, color } = item;
+
+      const product = productMap.get(productId);
       if (!product) continue;
 
-      const existing = await CartModel.findOne({
-        userId,
-        productId,
-      });
+      const key = `${productId}_${size}_${color}`;
+      const existing = existingMap.get(key);
 
       if (existing) {
-        const newQty = existing.quantity + quantity;
-
-        existing.quantity = Math.min(
-          newQty,
-          product.quantityInStock
+        const newQty = Math.min(
+          existing.quantity + quantity,
+          product.quantityInStock,
         );
-        await existing.save();
+
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: existing._id },
+            update: {
+              quantity: newQty,
+              expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+            },
+          },
+        });
       } else {
-        await CartModel.create({
-          userId,
-          productId,
-          quantity: Math.min(quantity, product.quantityInStock),
+        bulkOps.push({
+          insertOne: {
+            document: {
+              userId,
+              productId,
+              quantity: Math.min(quantity, product.quantityInStock),
+              size,
+              color,
+              expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+            },
+          },
         });
       }
     }
 
-    // ✅ RETURN FULL CART (REQUIRED FOR FRONTEND)
+    if (bulkOps.length > 0) {
+      await CartModel.bulkWrite(bulkOps);
+    }
+
+    // ✅ Return final cart
     const finalCart = await CartModel.find({ userId })
       .populate("productId")
       .lean();
 
     return res.json({
       success: true,
-      data: finalCart, // ✅ IMPORTANT
+      data: finalCart,
     });
-
   } catch (error: any) {
     return res.status(500).json({
       success: false,
@@ -333,4 +329,3 @@ export const mergeCart = async (req: Request, res: Response) => {
     });
   }
 };
-

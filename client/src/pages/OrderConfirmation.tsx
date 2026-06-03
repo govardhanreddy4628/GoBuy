@@ -18,7 +18,8 @@ const OrderConfirmation = () => {
 
   if (!orderData) return null;
 
-  const { orderId, shippingDetails, paymentMethod, total } = orderData;
+  const { orderId, shippingDetails, paymentMethod, amount } = orderData;
+  console.log(orderId)
 
   const getPaymentMethodLabel = (method: string) => {
     switch (method) {
@@ -46,7 +47,7 @@ const OrderConfirmation = () => {
 
           <div className="bg-muted p-4 rounded-lg mb-6">
             <p className="text-sm text-muted-foreground mb-1">Order ID</p>
-            <p className="text-xl font-mono font-semibold">{orderId}</p>
+            <p className="text-xl font-mono font-semibold ">{orderId}</p>
           </div>
 
           <div className="text-left space-y-4 mb-8">
@@ -70,7 +71,7 @@ const OrderConfirmation = () => {
               </div>
               <div className="text-right">
                 <h3 className="font-semibold mb-1">Total Amount</h3>
-                <p className="text-lg font-bold">₹{total}</p>
+                <p className="text-lg font-bold">₹{amount}</p>
               </div>
             </div>
           </div>

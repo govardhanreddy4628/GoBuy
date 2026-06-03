@@ -27,6 +27,9 @@ import { hashToken } from "../utils/hash.js";
 import { sendVerificationEmailUsingNodeMailer } from "../utils/sendEmailUsingNodeMailer.js";
 import { getAuthCookieOptions } from "../config/cookies.js";
 import { sendVerificationEmailUsingResend } from "../utils/sendVerificationEmailUsingResend.js";
+import productModel, { IProduct } from "../models/productModel.js";
+import mongoose from "mongoose";
+import Order from "../models/orderModel.js";
 
 // ===================== registration =======================
 export const registerController = async (
@@ -38,7 +41,8 @@ export const registerController = async (
     // console.log("BODY:", req.body);
     console.log("FILE:", req.file);
 
-    const { email, password, fullName, confirmPassword, inviteToken } = req.body;
+    const { email, password, fullName, confirmPassword, inviteToken } =
+      req.body;
     const avatar = req.file?.path || undefined; // Assuming you're using multer for file uploads
     console.log(avatar);
 
@@ -61,7 +65,6 @@ export const registerController = async (
     }
     //add validations for remaining fields
 
-
     /**
      * -----------------------------------------
      * 🧠 INVITE HANDLING (ADMIN / VENDOR)
@@ -75,8 +78,10 @@ export const registerController = async (
     if (inviteToken) {
       const inviteKey = `admin:invite:${inviteToken}`;
       const inviteRaw = await redisClient.get(inviteKey);
-       if (!inviteRaw) {
-        return res.status(400).json({ message: "Invalid or expired invite link" });
+      if (!inviteRaw) {
+        return res
+          .status(400)
+          .json({ message: "Invalid or expired invite link" });
       }
 
       const invite = JSON.parse(inviteRaw);
@@ -339,17 +344,17 @@ export const loginController = async (
     /* ✅ ADD MFA CHECK RIGHT HERE */
 
     // 🔐 Admin MFA enforcement
-    if (
-      ["ADMIN", "SUPER-ADMIN"].includes(user.role) &&
-      (!user.mfa?.enabled || !user.mfa?.verified)
-    ) {
-      res.status(403).json({
-        success: false,
-        message: "MFA_SETUP_REQUIRED",
-        mfaRequired: true,
-      });
-      return;
-    }
+    // if (
+    //   ["ADMIN", "SUPER-ADMIN"].includes(user.role) &&
+    //   (!user.mfa?.enabled || !user.mfa?.verified)
+    // ) {
+    //   res.status(403).json({
+    //     success: false,
+    //     message: "MFA_SETUP_REQUIRED",
+    //     mfaRequired: true,
+    //   });
+    //   return;
+    // }
 
     // case 2: Email verified, generate tokens
     const accessToken = generateAccessToken(user.id, user.role);
@@ -1093,3 +1098,109 @@ export async function refreshController(req: Request, res: Response) {
     accessToken,
   });
 }
+
+
+
+
+
+export const getCustomers = async (req: Request, res: Response) => {
+  try {
+    const users = await UserModel.find({ role: "USER" }).lean();
+
+    const customers = await Promise.all(
+      users.map(async (user) => {
+        const orders = await Order.find({ userId: user._id }).lean();
+
+        const totalOrders = orders.length;
+
+        const totalSpend = orders.reduce(
+          (acc, o) => acc + (o.totalAmount || 0),
+          0
+        );
+
+        const lastOrder =
+          orders.length > 0
+            ? orders.sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime()
+              )[0].createdAt
+            : null;
+
+        return {
+          id: user._id,
+          name: user.fullName,
+          avatar: user.avatar,
+          email: user.email,
+          phone: user.phoneNumber,
+          address: "", // optional (you can improve later)
+          joined: user.createdAt,
+          orders: totalOrders,
+          totalSpend,
+          lastOrder,
+          status: user.status === "ACTIVE" ? "Active" : "Inactive",
+          role: user.role,
+        };
+      })
+    );
+
+    res.json({ data: customers });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch customers" });
+  }
+};
+
+
+export const createCustomer = async (req: Request, res: Response) => {
+  try {
+    const user = await UserModel.create({
+      fullName: req.body.name,
+      email: req.body.email,
+      phoneNumber: req.body.phone,
+      avatar: req.body.avatar,
+      role: "USER",
+      status: req.body.status === "Active" ? "ACTIVE" : "INACTIVE",
+    });
+
+    res.json({ data: user });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to create customer" });
+  }
+};
+
+
+export const updateCustomer = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const updated = await UserModel.findByIdAndUpdate(
+      id,
+      {
+        fullName: req.body.name,
+        email: req.body.email,
+        phoneNumber: req.body.phone,
+        avatar: req.body.avatar,
+        status: req.body.status === "Active" ? "ACTIVE" : "INACTIVE",
+      },
+      { new: true }
+    );
+
+    res.json({ data: updated });
+  } catch {
+    res.status(500).json({ message: "Update failed" });
+  }
+};
+
+
+export const deleteCustomer = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await UserModel.findByIdAndDelete(id);
+
+    res.json({ message: "Deleted successfully" });
+  } catch {
+    res.status(500).json({ message: "Delete failed" });
+  }
+};

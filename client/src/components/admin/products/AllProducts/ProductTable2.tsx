@@ -10,6 +10,7 @@ import {
 import { Edit, Trash2, Eye } from "lucide-react";
 import { Badge } from "../../../../ui/badge";
 import { Product } from "../../types/product";
+import { getCloudinaryImage } from "../../../../utils/imgTransformation";
 
 
 interface ProductsTableProps {
@@ -85,13 +86,21 @@ export function ProductsTable2({
         </TableHeader>
 
         <TableBody>
-          {products.map((product) => (
+          {products.map((product) => {
+            const img = product.images?.[0]?.url
+              ? getCloudinaryImage(product.images[0].url, {
+                  width: 80,
+                  height: 80,
+                })
+              : "/placeholder.png";
+          return (
             <TableRow key={product._id}>
               {visibleColumns.image && (
                 <TableCell>
                   <img
-                    src={product.images[0]?.url ?? "/placeholder.png"}
+                    src={img}
                     alt={product.name}
+                    loading="lazy"   // 🔥 IMPORTANT
                     className="h-12 w-12 rounded-md object-cover"
                   />
                 </TableCell>
@@ -150,17 +159,13 @@ export function ProductsTable2({
                   <Button size="sm" variant="outline" onClick={() => onEdit(product)}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onDelete(product)}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => onDelete(product)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </TableCell>
             </TableRow>
-          ))}
+          )})}
         </TableBody>
       </Table>
     </div>

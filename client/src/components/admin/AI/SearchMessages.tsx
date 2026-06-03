@@ -7,7 +7,6 @@ import { Button } from '../../../ui/button';
 import { Badge } from '../../../ui/badge';
 import { Input } from '../../../ui/input';
 
-
 interface SearchMessagesProps {
   messages: Message[];
   onMessageSelect: (messageId: string) => void;

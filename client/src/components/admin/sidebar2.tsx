@@ -17,13 +17,9 @@ import { BiCategory } from "react-icons/bi";
 import { ImMagicWand } from "react-icons/im";
 import { MdLogout } from "react-icons/md";
 import { HiOutlineDotsVertical } from "react-icons/hi";
-import {
-  PieChart,
-  LineChart,
-  Settings,
-  ChevronRight,
-  ChevronDown,
-} from "lucide-react";
+import { SiBloglovin } from "react-icons/si";
+
+import {PieChart,LineChart,Settings,ChevronRight,ChevronDown} from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { useIsMobile } from "../../hooks/useMobile";
@@ -88,6 +84,7 @@ export const navItems: NavItem[] = [
     href: "/categories/manage",
     roles: ["SUPER_ADMIN", "ADMIN"],
   },
+  { title: 'Blogs', icon: SiBloglovin, href: '/blogs', roles: ["SUPER_ADMIN", "ADMIN"],},
   {
     title: "Calendar",
     icon: FaRegCalendarAlt,

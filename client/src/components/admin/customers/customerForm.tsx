@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Customer } from './customersData';
-
+import { Customer } from '../types/customers';
 
 
 type Props = {
@@ -21,26 +20,29 @@ const CustomerForm: React.FC<Props> = ({ initialData = {}, onSubmit, onCancel })
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  
+ // if you use it as Number(form.orders) ?? 0 gives error because Number(something) always returns number so nullish cohalescing operator will not work thats why use Number(form.orders ?? 0),
+
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.email) return alert('Name and email are required.');
+  e.preventDefault();
 
-    const newCustomer: Customer = {
-      id: form.id ?? Date.now(),
-      name: form.name,
-      avatar: form.avatar ?? 'https://via.placeholder.com/150',
-      email: form.email,
-      phone: form.phone ?? '',
-      address: form.address ?? '',
-      joined: form.joined ?? new Date().toISOString().split('T')[0],
-      orders: Number(form.orders ?? 0),            // if you use it as Number(form.orders) ?? 0 gives error because Number(something) always returns number so nullish cohalescing operator will not work thats why use Number(form.orders ?? 0),
-      totalSpend: Number(form.totalSpend ?? 0), 
-      lastOrder: form.lastOrder ?? '-',
-      status: form.status === 'Inactive' ? 'Inactive' : 'Active',
-    };
+  if (!form.name || !form.email) {
+    alert("Name & Email required");
+    return;
+  }
 
-    onSubmit(newCustomer);
+  const customer: Customer = {
+    name: form.name,
+    avatar: form.avatar || "https://via.placeholder.com/150",
+    email: form.email,
+    phone: form.phone || "",
+    address: form.address || "",
+    status: form.status === "Inactive" ? "Inactive" : "Active",
+    role: "USER",
   };
+
+  onSubmit(customer);
+};
 
   return (
     <form

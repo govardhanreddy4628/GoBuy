@@ -1,15 +1,24 @@
 import express from "express";
 import {
+  addRecentlyViewed,
   //checkoutController,
   createProduct,
   createProductController,
   deleteProductController,
   //filters,
   getAllProductController,
+  getBestDiscountProducts,
+  getBrandsByCategory,
+  getFeaturedProducts,
+  getProducts,
   getProductsByCategoryId,
   getProductsByCategorySlug,
+  getProductsByIds,
+  getRatingRange,
+  getRecentlyViewedProducts,
   getSingleProductByIdController,
   getTopRatedProducts,
+  smartSuggest,
   //productFiltersController,
   updateProductController,
   //updateProductController,
@@ -51,5 +60,20 @@ productRouter.get("/category/id/:id", asyncHandler(getProductsByCategoryId));
 //productRouter.post('/filters', filters)
 
 productRouter.get("/top-rated", asyncHandler(getTopRatedProducts));
+productRouter.get("/products-with-best-discounts", asyncHandler(getBestDiscountProducts));
+productRouter.get("/featured", asyncHandler(getFeaturedProducts));
+
+productRouter.get("/ratings-range", asyncHandler(getRatingRange));
+productRouter.get("/brands", asyncHandler(getBrandsByCategory));
+productRouter.get("/", asyncHandler(getProducts));
+
+productRouter.get("/suggest", asyncHandler(smartSuggest));
+
+productRouter.post("/recently-viewed/:productId", authenticate(), asyncHandler(addRecentlyViewed));
+
+productRouter.get("/recently-viewed", authenticate(), asyncHandler(getRecentlyViewedProducts));
+
+productRouter.get("/by-ids", authenticate(), asyncHandler(getProductsByIds));
+
 
 export default productRouter;

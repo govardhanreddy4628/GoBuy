@@ -187,10 +187,7 @@ const llm = new ChatGroq({
   // other params...
 });
 
-const getEmails = tool(
-  () => {
-    return JSON.stringify(gmailEmails);
-  },
+const getEmails = tool(() => {return JSON.stringify(gmailEmails)},
   {
     name: "get_emails",
     description: "Get the emails from inbox",
