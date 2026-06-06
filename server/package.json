@@ -11,7 +11,9 @@
     "seed": "tsx src/scripts/seedSuperAdmin.ts",
     "seed:demo": "tsx src/scripts/seedDemoUser.ts",
     "seed:users": "tsx src/scripts/seedUser.ts",
-    "seed:agents": "tsx src/scripts/seedAgents.ts"
+    "seed:agents": "tsx src/scripts/seedAgents.ts",
+    "seed:categories": "tsx src/scripts/fixCategoryNames.ts",
+    "seed:productembeddings": "tsx src/scripts/createProductEmbeddings"
   },
   "author": "",
   "license": "ISC",

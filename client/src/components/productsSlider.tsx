@@ -25,6 +25,7 @@ const SkeletonCard = () => (
 
 type Props = {
   handleClickOpen: (product: Product) => void;
+  handleOpenAiChat: (product: Product) => void;
   headerName?: string;
   route?: string;
   categorySlug?: string; // ✅ NEW
@@ -32,6 +33,7 @@ type Props = {
 
 const ProductsSlider = ({
   handleClickOpen,
+  handleOpenAiChat,
   headerName,
   route,
   categorySlug,
@@ -163,12 +165,15 @@ const ProductsSlider = ({
 
   return (
     <div className="categorySwiper my-8">
-      <Box
-        sx={{ width: "95%" }}
-        className="w-full flex justify-between items-center mx-auto pt-4 mb-4"
-      >
-        <h1 className="text-[24px] font-bold">{headerName}</h1>
-      </Box>
+
+      {(loading || products.length > 0) && (
+  <Box
+    sx={{ width: "95%" }}
+    className="w-full flex justify-between items-center mx-auto pt-4 mb-4"
+  >
+    <h1 className="text-[24px] font-bold">{headerName}</h1>
+  </Box>
+)}
 
       <div className="w-[95%] mx-auto">
         <Swiper
@@ -204,6 +209,7 @@ const ProductsSlider = ({
                       handleIncrease={() => handleIncrease(key)}
                       handleDecrease={() => handleDecrease(key)}
                       handleClickOpen={handleClickOpen}
+                      handleOpenAiChat={handleOpenAiChat}
                       loadingCartItems={loadingCartItems}
                     />
                   </SwiperSlide>

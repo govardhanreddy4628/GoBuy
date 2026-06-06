@@ -6,7 +6,12 @@ import { useAuth } from "../context/authContext";
 
 const MyAccount = () => {
   const navigate = useNavigate();
-  const user = useAuth().user;
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  }
 
   return (
     <Layout>
@@ -18,7 +23,7 @@ const MyAccount = () => {
             <div className="relative w-28 h-28 rounded-full overflow-hidden border border-red-400 border-dotted mb-2">
               {user?.avatar ? (<img
                 src={user?.avatar}
-                className=""
+                className="w-full h-full object-cover"
               />) : (<div className="w-28 h-14 bg-gray-50 absolute bg-opacity-90 bottom-0 text-sm text-center pt-2">
                 Upload photo
               </div>)}
@@ -26,7 +31,7 @@ const MyAccount = () => {
 
             {user && (
               <>
-                <h3 className="text-[16px]">{user?.name}</h3>
+                <h3 className="text-[16px]">{user?.fullName}</h3>
                 <h6 className="text-[14px]">{user.email}</h6>
               </>
             )}
@@ -48,7 +53,7 @@ const MyAccount = () => {
               ))}
 
               {/* Logout */}
-              <li className="flex gap-2 items-center hover:bg-gray-100 p-2 rounded-sm cursor-pointer">
+              <li className="flex gap-2 items-center hover:bg-gray-100 p-2 rounded-sm cursor-pointer" onClick={handleLogout}>
                 <FiLogOut />
                 <span>Logout</span>
               </li>

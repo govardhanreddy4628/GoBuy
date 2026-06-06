@@ -1,7 +1,7 @@
 // controllers/searchController.ts
 import searchAnalyticsModel from "../models/searchAnalyticsModel.js";
-import { createEmbedding } from "../services/embeddingService.js";
-import { vectorSearch } from "../services/vectorService.js";
+import { createEmbedding } from "../services/rag/embeddingService.js";
+import { vectorSearchAggregationPipeline } from "../services/rag/vectorSearchService.js";
 import productModel from "../models/productModel.js";
 import CategoryModel from "../models/categoryModel.js";
 import { Request, Response } from "express";
@@ -157,7 +157,7 @@ export const searchProducts = async (req: Request, res: Response) => {
         const embedding = await createEmbedding(query);
 
         if (embedding) {
-          const vectorResults = await vectorSearch(productModel, embedding);
+          const vectorResults = await vectorSearchAggregationPipeline(productModel, embedding);
 
           semanticResults = vectorResults.map((p: any) => ({
             _id: p._id,

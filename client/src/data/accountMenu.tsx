@@ -13,7 +13,7 @@ export const accountMenu = [
     id: "list",
     label: "My Wish List",
     icon: <FaRegHeart />,
-    path: "list",
+    path: "wishlist",
   },
   {
     id: "orders",

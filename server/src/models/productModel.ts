@@ -31,6 +31,14 @@ interface IVariant {
   specifications?: [ISpecifications];
 }
 
+
+
+
+
+
+
+
+
 export interface IShipping extends Document {
   isShippable: boolean;
   shippingCost?: number;
@@ -59,6 +67,7 @@ export interface IProduct extends Document {
   shortDescription: string;
   description: string;
   category: mongoose.Types.ObjectId;
+  categoryName: string;
   costPerItem?: number;
   finalPrice?: number;
   listedPrice: number;
@@ -73,7 +82,6 @@ export interface IProduct extends Document {
   recentQuantity: number;
   rating?: number;
   numReviews: number;
-  // thumbnails: string[];
   images?: {
     public_id: string;
     url: string;
@@ -114,7 +122,6 @@ export interface IProduct extends Document {
   views?: number;
   cartAdds?: number;
   orderedCount?: number;
-  product_vector?: number[]; // for vector search
   createdAt?: Date;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
@@ -201,7 +208,7 @@ const productSchema = new mongoose.Schema<IProduct>(
     shortDescription: { type: String, required: true },
     description: { type: String, required: true },
     category: { type: Schema.Types.ObjectId, ref: "Category" },
-
+    categoryName: { type: String, required: true, index: true },
     costPerItem: { type: Number, min: 0 },
 
     listedPrice: {
@@ -241,18 +248,9 @@ const productSchema = new mongoose.Schema<IProduct>(
     productColor: { type: String },
     availableColorsForProduct: { type: [String], default: [] },
 
-    //category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
-
     recentQuantity: { type: Number, min: 0, default: 0 },
     quantityInStock: { type: Number, min: 0, default: 0 },
 
-    // thumbnails: {
-    //   type: [String],
-    //   // validate: [
-    //   //   (val: string[]) => val.length > 0,
-    //   //   "At least one thumbnail required",
-    //   // ],
-    // },
     images: [
       {
         public_id: { type: String, required: true },
@@ -328,8 +326,6 @@ const productSchema = new mongoose.Schema<IProduct>(
     views: { type: Number, default: 0 },
     cartAdds: {type: Number, default: 0 },
     orderedCount: { type: Number, default: 0 },
-
-    product_vector: { type: [Number], index: true}, // for vector search
 
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },

@@ -7,6 +7,7 @@ type WorkItem = {
   userPrompt: string;
   socketRoom: string;
   meta?: any;
+  isManual?: boolean; // flag to indicate if this was a manual escalation
 };
 
 class AIQueue extends EventEmitter {

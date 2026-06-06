@@ -66,6 +66,7 @@ export interface IProduct extends Document {
   shortDescription: string;
   description: string;
   category: mongoose.Types.ObjectId;
+  categoryName: string;
   costPerItem?: number;
   finalPrice?: number;
   listedPrice: number;
@@ -109,6 +110,7 @@ export interface IProduct extends Document {
   shipping?: IShipping;
   availabilityOfShipping?: boolean;
   specifications: ISpecifications[];
+  //variants: IVariant[];
   seoTags?: string[];
   seoTitle?: string;
   seoDescription?: string;
@@ -117,6 +119,9 @@ export interface IProduct extends Document {
   embeddedOffers?: IEmbeddedOffer[]; // lightweight offers for fast reads
   warranty?: string;
   reviews?: IReview[];
+  views?: number;
+  cartAdds?: number;
+  orderedCount?: number;
   createdAt?: Date;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
@@ -142,27 +147,22 @@ const SpecificationsSchema = new Schema<ISpecifications>({
 const VariantSchema: Schema = new Schema(
   {
     sku: { type: String, required: true },
-
     attributes: {
       color: { type: String },
       size: { type: String },
       ram: { type: String },
       storage: { type: String },
     },
-
     quantityInStock: { type: Number, required: true, min: 0 },
-
     listedPrice: { type: Number, required: true, min: 0 },
     discountPercentage: { type: Number, default: 0 },
     finalPrice: { type: Number, min: 0 },
-
     images: [
       {
         public_id: String,
         url: String,
       },
     ],
-
     active: { type: Boolean, default: true },
   },
   { _id: true },
@@ -218,6 +218,7 @@ const productSchema = new mongoose.Schema<IProduct>(
     shortDescription: { type: String, required: true },
     description: { type: String, required: true },
     category: { type: Schema.Types.ObjectId, ref: "Category" },
+    categoryName: { type: String, required: true, index: true },
 
     costPerItem: { type: Number, min: 0 },
 

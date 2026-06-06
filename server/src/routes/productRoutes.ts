@@ -26,6 +26,7 @@ import {
 import { authenticate } from "../middleware/authenticate.js";
 
 import { uploadMultiple } from "../middleware/multer.js";
+import { askProductQuestion } from "../services/rag/productAssistant.js";
 
 const productRouter = express.Router();
 
@@ -74,6 +75,8 @@ productRouter.post("/recently-viewed/:productId", authenticate(), asyncHandler(a
 productRouter.get("/recently-viewed", authenticate(), asyncHandler(getRecentlyViewedProducts));
 
 productRouter.get("/by-ids", authenticate(), asyncHandler(getProductsByIds));
+
+productRouter.post("/ask", asyncHandler(askProductQuestion));
 
 
 export default productRouter;

@@ -14,13 +14,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   isLoading = false,
   placeholder = "Ask me anything about your store, products, orders...",
 }) => {
-  const [message, setMessage] = useState("");
+  const [inputText, setInputText] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim() && !isLoading) {
-      onSendMessage(message.trim());
-      setMessage("");
+    if (inputText.trim() && !isLoading) {
+      onSendMessage(inputText.trim());
+      setInputText("");
     }
   };
 
@@ -36,8 +36,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       <form onSubmit={handleSubmit} className="flex items-end gap-3">
         <div className="flex-1">
           <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className="min-h-[50px] max-h-[150px] resize-none border-border/50 focus:border-primary transition-colors duration-200"
@@ -46,7 +46,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
         <Button
           type="submit"
-          disabled={!message.trim() || isLoading}
+          disabled={!inputText.trim() || isLoading}
           className="h-[50px] px-4 bg-primary hover:opacity-90 transition-all duration-200 shadow-medium hover:shadow-large"
         >
           {isLoading ? (

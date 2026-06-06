@@ -3,6 +3,7 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { IoExpand } from "react-icons/io5";
 import { FaRegHeart, FaStar } from "react-icons/fa";
+import { RiRobot2Line } from "react-icons/ri";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, IconButton, CircularProgress } from "@mui/material";
 import { truncateWords } from "../helpers";
@@ -28,6 +29,7 @@ interface Props {
   handleIncrease: (productId: string) => void;
   handleDecrease: (productId: string) => void;
   handleClickOpen: (product: Product) => void;
+  handleOpenAiChat: (product: Product) => void
   loadingCartItems?: { [productId: string]: boolean };
 }
 
@@ -38,11 +40,13 @@ const ProductCard = ({
   handleIncrease,
   handleDecrease,
   handleClickOpen,
+  handleOpenAiChat,
   loadingCartItems = {}
 }: Props) => {
   const navigate = useNavigate();
   const { wishlist, toggleWishlist } = useWishlist();
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  
 
   const isWishlisted = Array.isArray(wishlist) &&
     wishlist.some((p: any) => p?._id === product._id);
@@ -76,7 +80,7 @@ const ProductCard = ({
         <div className={`absolute right-[10px] flex flex-col gap-[5px] p-1 transition-all z-50 duration-400
          ${isWishlisted ? "top-[10px]" : "-top-[100%] group-hover:top-[10px]"}`}
         >
-          <div
+          <div title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"} 
             onClick={async () => {
               if (!product) return;
               setLoadingId(product._id);
@@ -96,11 +100,18 @@ const ProductCard = ({
             )}
           </div>
 
-          <div
+          <div title="View Product Details"
             className="h-[35px] w-[35px] rounded-full bg-white dark:bg-gray-800 dark:text-gray-200 flex items-center justify-center dark:hover:bg-red-500 hover:text-white hover:bg-red-500 transition-all cursor-pointer"
             onClick={() => handleClickOpen(product)}
           >
             <IoExpand />
+          </div>
+
+          <div title="Ask AI about this product"
+            className="h-[35px] w-[35px] rounded-full bg-white dark:bg-gray-800 dark:text-gray-200 flex items-center justify-center dark:hover:bg-red-500 hover:text-white hover:bg-red-500 transition-all cursor-pointer"
+            onClick={() => handleOpenAiChat(product)}
+          >
+            <RiRobot2Line />
           </div>
         </div>
       </div>

@@ -249,16 +249,21 @@ interface WishlistContextType {
   wishlist: any[];
   toggleWishlist: (product: any) => Promise<void>;
   fetchWishlist: () => Promise<void>;
+  wishListLoading: boolean;
+  wishListToggleLoading: string | null;
 }
 
 const WishlistContext = createContext<WishlistContextType | null>(null);
 
 export const WishlistProvider = ({ children }: any) => {
   const [wishlist, setWishlist] = useState<any[]>([]);
+  const [wishListLoading, setWishlistLoading] = useState(false); 
+  const [wishListToggleLoading, setWishlistToggleLoading] = useState<string | null>(null);
   const { user } = useAuth();
 
   // ✅ FETCH WISHLIST
   const fetchWishlist = async () => {
+    setWishlistLoading(true);
     try {
       const response = await GET("api/v1/wishlist");
 
@@ -270,6 +275,8 @@ export const WishlistProvider = ({ children }: any) => {
       }
     } catch (err) {
       console.error("Fetch wishlist error:", err);
+    } finally {
+      setWishlistLoading(false);
     }
   };
 
@@ -284,6 +291,7 @@ export const WishlistProvider = ({ children }: any) => {
 
   // ✅ TOGGLE
   const toggleWishlist = async (product: any) => {
+    setWishlistToggleLoading(product._id);
     try {
       const response = await POST("api/v1/wishlist/toggle", {
         productId: product._id,
@@ -304,12 +312,14 @@ export const WishlistProvider = ({ children }: any) => {
       }
     } catch (err) {
       console.error("Wishlist toggle error:", err);
+    } finally {
+      setWishlistToggleLoading(null);
     }
   };
 
   return (
     <WishlistContext.Provider
-      value={{ wishlist, toggleWishlist, fetchWishlist }}
+      value={{ wishlist, toggleWishlist, fetchWishlist, wishListLoading, wishListToggleLoading }}
     >
       {children}
     </WishlistContext.Provider>

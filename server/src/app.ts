@@ -38,7 +38,6 @@ import reviewsRouter from "./routes/reviewRoutes.js";
 import questionsRouter from "./routes/prodQARoutes.js";
 import analyticsRouter from "./routes/analyticsRoutes.js";
 import searchRouter from "./routes/searchRoutes.js";
-import { createEmbedding } from "./services/embeddingService.js";
 import agentRouter from "./routes/agentRoutes.js";
 import blogRouter from "./routes/blogRoutes.js";
 import { initializeSockets } from "./sockets/index.js";
@@ -120,7 +119,8 @@ app.use(
   morgan("dev", {
     skip: (req) => req.originalUrl.includes("/api/inngest"),
   })
-);       // This will hide all Inngest logs in terminal since they are very repetitive. You can customize the skip condition as needed.
+);      
+// This will hide all Inngest logs in terminal since they are very repetitive. You can customize the skip condition as needed.
 //app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 app.use(express.static("public"));   // serve static assets
 
@@ -164,19 +164,6 @@ app.get("/api/getkey", (req, res) => {
 
 // const io = app.get("io");
 // io.use((socket, next) => {socketAuthenticator(socket, next)});
-
-
-console.log("Gemini key:", process.env.GEMINI_API_KEY);
-async function test() {
-  const embedding = await createEmbedding(
-    "Green cotton polo tshirt for men"
-  );
-
-  console.log("Embedding length:", embedding?.length);
-  console.log("First values:", embedding?.slice(0,5));
-
-}
-test();
 
 
 // Optional: Get chat history

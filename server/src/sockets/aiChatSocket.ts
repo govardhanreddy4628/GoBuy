@@ -1,9 +1,9 @@
-import { createEmbedding } from "../services/embeddingService.js";
-import { vectorSearch } from "../services/vectorService.js";
+import { vectorSearchAggregationPipeline } from "../services/rag/vectorSearchService.js";
 import productModel from "../models/productModel.js";
 import Order from "../models/orderModel.js";
 import { generateAIResponse } from "../services/geminiService.js";
 import Chat from "../models/aiChatModel.js";
+import { queryEmbedding } from "../services/rag/embeddingService.js";
 
 const aiChatSocket = (io) => {
   io.on("connection", (socket) => {
@@ -19,9 +19,9 @@ const aiChatSocket = (io) => {
       await Chat.create({ userId, sender: "user", message });
 
       // Semantic search
-      const queryEmbedding = await createEmbedding(message);
+      const queryEmbedded = await queryEmbedding(message);
       const products = await productModel.find();
-      const similarProducts = await vectorSearch(productModel, queryEmbedding);
+      const similarProducts = await vectorSearchAggregationPipeline(productModel, queryEmbedded);
 
       const orders = await Order.find({ userId });
 

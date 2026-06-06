@@ -1,7 +1,7 @@
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
 import 'swiper/css/pagination';
 import './hero.css'
-import BlogSection from './BlogSection';
+import BlogSection from './blogs/BlogSection';
 import CategorySwiper from './categorySwiper';
 import CategoryTabs from './categoryTabs';
 import HomeSlider from './homeSlider';
@@ -9,7 +9,13 @@ import SecondarySlider from './secondarySlider';
 import { useState } from 'react';
 //import { GoGitCompare } from "react-icons/go";
 import ProductsSlider from './productsSlider';
-import ProductQuickViewModal from './ProductQuickViewModal ';
+import banner1 from '../assets/seconderybanners/banner1.webp';
+import banner2 from '../assets/seconderybanners/banner2.webp';
+import banner3 from '../assets/seconderybanners/banner3.webp';
+import banner4 from '../assets/seconderybanners/banner4.webp';
+import banner5 from '../assets/seconderybanners/banner5.webp';
+import AiChatModal from './aiChatModal/aiChatModal';
+import ProductQuickViewModal from './ProductQuickViewModal';
 
 interface Product {
     _id: string;
@@ -27,6 +33,18 @@ interface Product {
 
 const Hero = () => {
     const [openProduct, setOpenProduct] = useState<Product | null>(null);
+    const [aiModalOpen, setAiModalOpen] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+    const handleOpenAiChat = (product: Product) => {
+        setSelectedProduct(product);
+        setAiModalOpen(true);
+    };
+
+    const handleCloseAiChat = () => {
+        setAiModalOpen(false);
+        setSelectedProduct(null);
+    };
 
     const handleClickOpen = (product: Product) => {
         setOpenProduct(product);
@@ -36,11 +54,11 @@ const Hero = () => {
         <>
             <HomeSlider />
             <CategorySwiper />
-            <CategoryTabs handleClickOpen={handleClickOpen} />
+            <CategoryTabs handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} />
 
             <section className='bg-white w-full pb-4 dark:bg-gray-900'>
                 <SecondarySlider />
-                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Top Rated Products" route="top-rated" />
+                <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Top Rated Products" route="top-rated" />
 
                 {/* SHIPPING BANNER */}
                 <section className="container p-5 mx-auto px-6 md:px-24">
@@ -70,12 +88,7 @@ const Hero = () => {
 
                 <section className="w-[95%] mx-auto mt-4 mb-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-                        {[
-                            "https://serviceapi.spicezgold.com/download/1741669012402_banner1.webp",
-                            "https://serviceapi.spicezgold.com/download/1741669037986_banner2.webp",
-                            "https://serviceapi.spicezgold.com/download/1741669057847_banner5.webp",
-                            "https://serviceapi.spicezgold.com/download/1742453755529_1741669087880_banner6.webp",
-                        ].map((src, idx) => (
+                        {[banner5, banner2, banner3, banner4].map((src, idx) => (
                             <div key={idx} className="overflow-hidden rounded-lg">
                                 <img
                                     src={src}
@@ -86,7 +99,8 @@ const Hero = () => {
                         ))}
                     </div>
                 </section>
-                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Products With Best Discount" route="products-with-best-discounts" />
+
+                <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Products With Best Discount" route="products-with-best-discounts" />
 
                 <section className="w-[95%] mx-auto mt-4 mb-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -117,11 +131,10 @@ const Hero = () => {
                 <ProductsSlider handleClickOpen={handleClickOpen} headerName="Recently Viewed Products" route=""/> */}
 
 
-                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Top Rated Products" route="top-rated" />
-                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Featured Products" route="featured" />
-                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Recently Viewed Products" route="recently-viewed" />
-                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Top Rated Products" route="top-rated" />
-                
+                <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Top Rated Products" route="top-rated" />
+                <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Featured Products" route="featured" />
+                <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Recently Viewed Products" route="recently-viewed" />
+                <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Top Rated Products" route="top-rated" />
                 <BlogSection />
             </section >
 
@@ -132,6 +145,13 @@ const Hero = () => {
                 onClose={() => setOpenProduct(null)}
             />
 
+            {/* AI Chat modal */}
+            {aiModalOpen && selectedProduct && (
+                <AiChatModal
+                    product={selectedProduct}
+                    onClose={handleCloseAiChat}
+                />
+            )}
         </>
     )
 }

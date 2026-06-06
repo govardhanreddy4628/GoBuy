@@ -20,7 +20,7 @@ function CustomTabPanel({ children, value, index }: TabPanelProps) {
   );
 }
 
-const CategoryTabs = ({ handleClickOpen }) => {
+const CategoryTabs = ({ handleClickOpen, handleOpenAiChat }: { handleClickOpen: (product: any) => void; handleOpenAiChat: (product: any) => void }) => {
   const { categories, loading } = useCategories();
   const [value, setValue] = useState(0);
 
@@ -80,6 +80,7 @@ const CategoryTabs = ({ handleClickOpen }) => {
                 <ProductsSlider
                   categorySlug={cat.slug}
                   handleClickOpen={handleClickOpen}
+                  handleOpenAiChat={handleOpenAiChat}
                 />
               </CustomTabPanel>
             ))}

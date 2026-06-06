@@ -17,7 +17,6 @@ const HomeSlider = () => {
                         <SwiperSlide className='overflow-hidden rounded-lg border-none'><img src={image2} className='w-full h-full object-cover' onError={(e) => { handleImageError(e) }} /></SwiperSlide>
                         <SwiperSlide className='overflow-hidden rounded-lg border-none'><img src={image3} className='w-full h-full object-cover' /></SwiperSlide>
                         <SwiperSlide className='overflow-hidden rounded-lg border-none'><img src={image5} className='w-full h-full object-cover' /></SwiperSlide>
-                        <SwiperSlide className='overflow-hidden rounded-lg border-none'><img src="https://serviceapi.spicezgold.com/download/1745503990603_NewProject(13).jpg" className='w-full h-full object-cover' /></SwiperSlide>
                         <SwiperSlide className='overflow-hidden rounded-lg border-none'><img src="https://graphicsfamily.com/wp-content/uploads/edd/2021/07/Professional-E-Commerce-Shoes-Banner-Design.jpg" className='w-full h-full object-cover' /></SwiperSlide>
                     </Swiper>
                 </div>

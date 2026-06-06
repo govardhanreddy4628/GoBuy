@@ -19,7 +19,7 @@ import ProductCard from "./productCard";
 import { useCart } from "../context/cartContext";
 import api from "../api/api_utility";
 import { truncateWords } from "../helpers";
-import ProductQuickViewModal from "./ProductQuickViewModal ";
+import ProductQuickViewModal from "./ProductQuickViewModal";
 import { IoClose } from "react-icons/io5";
 
 

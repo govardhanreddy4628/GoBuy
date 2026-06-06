@@ -10,6 +10,7 @@ import { getCategoryBreadcrumb } from "../services/getBreadCrumb.js";
 import CategoryModel from "../models/categoryModel.js";
 import searchAnalytics from "../models/searchAnalyticsModel.js";
 import UserModel from "../models/userModel.js";
+import { syncProductEmbedding } from "../utils/syncProductEmbedding.js";
 
 //  or use following validation
 //     const querySchema = z.object({
@@ -152,7 +153,7 @@ export const createProduct = async (
       name,
       description,
       shortDescription,
-      category,
+      category: categoryId,
       listedPrice,
       costPerItem,
       quantityInStock,
@@ -167,7 +168,7 @@ export const createProduct = async (
       !name ||
       !description ||
       !shortDescription ||
-      !category ||
+      !categoryId ||
       !listedPrice
     ) {
       res.status(400).json({ message: "Missing required fields" });
@@ -301,11 +302,18 @@ export const createProduct = async (
       }
     }
 
+    const category = await CategoryModel.findById(req.body.category);
+
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
     const newProduct = new productModel({
       name,
       description,
       shortDescription,
-      category,
+      category: category._id,
+      categoryName: category.name, // 🔥 store permanently
       brand,
       productColor: productColor || undefined,
       availableColorsForProduct: availableColorsForProduct || [],
@@ -320,6 +328,10 @@ export const createProduct = async (
     });
 
     await newProduct.save();
+    // product embeddings
+    syncProductEmbedding(newProduct).catch((err) =>
+      console.error("Embedding error:", err),
+    );                  // we did not used await here even though it is async function to make it asynchronus to fire the product creation response without waiting for the embedding to complete. This is because embedding can take some time and we don't want to delay the product creation response. We also catch any errors that occur during embedding and log them, but we don't want those errors to affect the product creation process.
 
     // (Optional) Post-processing event
     try {
@@ -475,6 +487,10 @@ export const updateProductController = async (
         : 0;
 
     const updatedProduct = await product.save();
+    // product embeddings
+    syncProductEmbedding(updatedProduct).catch((err) =>
+      console.error("Embedding error:", err),
+    );  
 
     return res.status(200).json({
       success: true,
@@ -2417,3 +2433,4 @@ export const mergeRecentlyViewed = async (req: Request, res: Response) => {
     res.status(500).json({ success: false });
   }
 };
+
