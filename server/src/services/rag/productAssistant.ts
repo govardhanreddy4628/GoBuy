@@ -122,6 +122,8 @@ import { getAnswerFromGemini } from "./getAnswersFromLLM.js";
 import { queryEmbedding } from "./embeddingService.js";
 import { vectorSearchAggregationPipeline } from "./vectorSearchService.js";
 
+let lastCallTime = 0;
+
 export const askProductQuestion = async (req: Request, res: Response) => {
   const { query, productId } = req.body;
 
@@ -129,6 +131,13 @@ export const askProductQuestion = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Query is required" });
   }
 
+  // ✅ rate limit protection
+  const now = Date.now();
+  if (now - lastCallTime < 1200) {
+    return res.json({ answer: "⏳ Please wait a moment..." });
+  }
+  lastCallTime = now;
+  
   try {
     // ✅ 1. ALWAYS get selected product
     const selectedProduct = productId

@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import Sidebar from './sidebar3';
+import Sidebar from './sidebar';
 import { Navbar } from './navbar';
 import { Outlet } from 'react-router-dom';
 import { sideBarContext } from '../../context/sidebarContext';

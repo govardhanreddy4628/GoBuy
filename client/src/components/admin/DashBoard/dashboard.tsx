@@ -30,7 +30,7 @@ import ProductConversionAnalytics from './productConversionAnalytics';
 import { GET } from '../../../api/api_utility';
 import { OrdersChart } from './OrdersChart';
 import CategoryBreakdownCard from './categoryBreakDownCard';
-import Products2 from '../products/AllProducts/Products2';
+import Products2 from '../products/AllProducts/Products';
 //import RevenueChart from './RevenueChart';
 import { CustomersChart } from './CustomersChart';
 import { RevenueChart } from './RevenueChart2';
@@ -400,7 +400,7 @@ export function Dashboard() {
           <InventoryExample isDarkMode={theme === "light" ? false : true} />
         </div> */}
 
-        
+
 
         {/* <MuiCollapsibleTable isDarkMode={theme === "light" ? false : true} /> */}
 

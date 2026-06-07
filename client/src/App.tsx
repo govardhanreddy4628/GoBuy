@@ -50,8 +50,6 @@ const ProductDetailsPage = lazy(() => import("./pages/ProductDetailsPage.tsx"));
 import UnderConstruction from "./components/admin/components/underConstruction.tsx";
 import ProductCategories from "./pages/ProductCategories.tsx";
 import AdminReviewPage from "./components/admin/reviews/ReviewPage.tsx";
-//import Products from "./components/admin/products/AllProducts/Products.tsx";
-import Products2 from "./components/admin/products/AllProducts/Products2.tsx";
 import { CartProvider } from "./context/cartContext.tsx";
 import MyProfile from "./components/myAccount/myProfile.tsx";
 import MyAddress from "./components/myAccount/myAddress.tsx";
@@ -75,6 +73,9 @@ import { WishlistProvider } from "./context/wishlistContext.tsx";
 import { Dashboard } from "./components/admin/DashBoard/dashboard.tsx";
 import { CustomerProvider } from "./components/admin/context/customerContext.tsx";
 import AdminBlogs from "./components/admin/Blogs/BlogsManage.tsx";
+import Loader from './ui/Loader.tsx';
+import Products from './components/admin/products/AllProducts/Products.tsx';
+
 
 
 const App = () => {
@@ -93,7 +94,7 @@ const App = () => {
                   <QueryClientProvider client={queryClient}>
 
                     {/* ✅ Suspense wrapper */}
-                    <Suspense fallback={<h1 style={{ textAlign: "center" }}>Loading...</h1>}>
+                    <Suspense fallback={<Loader/>}>
 
                     {/* <RegisterForm/> */}
                     {/* <Counter/> */}
@@ -136,7 +137,7 @@ const App = () => {
                       {/* </Route> */}
 
                       {/* <Route element={<AdminRoute />}> */}
-                      <Route path="/admin" element={<AdminLayout />}>
+                      <Route path="/" element={<AdminLayout />}>
                         <Route path="dashboard" element={<Dashboard />}></Route>
                         <Route path="adminprofile" element={<AdminProfile />} />
                         <Route path="adminsettings" element={<AdminSettings />} />
@@ -151,8 +152,7 @@ const App = () => {
                         <Route path="chat" element={<Chat />} />
                         <Route path="calendar2" element={<Calendar2 />} />
                         <Route path="calendar" element={<Calendar />} />
-                        {/* <Route path="products/all" element={<Products />} /> */}
-                        <Route path="products/all" element={<Products2 />} />
+                        <Route path="products/all" element={<Products />} />
                         <Route path="products/create" element={<CreateProduct3 />} />
                         <Route path="products/edit/:id" element={<CreateProduct3 />} />
                         <Route path="createproduct3" element={<CreateProduct />} />
@@ -181,7 +181,6 @@ const App = () => {
 
                     {/*</ThemeProvider> */}
                     <Toaster />
-
                   </QueryClientProvider>
                 </CustomerProvider>
               </CategoryProvider>

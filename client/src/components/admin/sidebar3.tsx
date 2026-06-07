@@ -407,7 +407,7 @@ export default function Sidebar({
                       "flex items-center gap-3 px-3 py-2 rounded-sm cursor-pointer transition",
                       active || subActive
                         ? "bg-gray-900 text-white"
-                        : "text-gray-600 hover:bg-gray-100",
+                        : "text-gray-900 hover:bg-gray-100",
                       !isExpand && "justify-center"
                     )}
                   >

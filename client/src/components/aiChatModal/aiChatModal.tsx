@@ -128,7 +128,17 @@ function AiChatModal({ product, onClose }: Props) {
               </ReactMarkdown>
             </div>
           )}
+                  {loading && !typingText && (
+            <div className="px-4 py-2 text-sm text-black dark:text-white">
+              <div className="flex space-x-1">
+                <span className="dot"></span>
+                <span className="dot"></span>
+                <span className="dot"></span>
+              </div>
+            </div>
+          )}
         </div>
+
 
         {/* INPUT */}
         <div className="flex p-3 border-t dark:border-gray-700 bg-white dark:bg-gray-900">

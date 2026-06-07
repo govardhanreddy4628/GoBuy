@@ -62,7 +62,7 @@ export const vectorSearchAggregationPipeline = async (
         path: "product_vector",
         queryVector: queryVector,
         numCandidates: 100,
-        limit: 5
+        limit: 3
       }
     },
     {
