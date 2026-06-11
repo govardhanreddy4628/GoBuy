@@ -1,189 +1,370 @@
 import { useEffect, useState } from "react";
-import { GET, DELETE, PUT } from "../../../api/api_utility";
+import { GET, DELETE, PUT, POST } from "../../../api/api_utility";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import { FaEdit, FaTrash } from "react-icons/fa";
+import Loader from "../../../ui/Loader";
 
 type Blog = {
-    _id: string;
-    title: string;
-    category: string;
-    createdAt: string;
+  _id: string;
+  title: string;
+  category: string;
+  description: string;
+  content: string;
+  image: string;
+  createdAt: string;
 };
 
 const AdminBlogs = () => {
-    const [blogs, setBlogs] = useState<Blog[]>([]);
-    const [selected, setSelected] = useState<any>(null);
+  const [allBlogs, setAllBlogs] = useState<Blog[]>([]);
+  const [filteredBlogs, setFilteredBlogs] = useState<Blog[]>([]);
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [loading, setLoading] = useState(false);
 
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
+  const [selected, setSelected] = useState<Blog | null>(null);
 
-    const [search, setSearch] = useState("");
-    const [category, setCategory] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [totalPages, setTotalPages] = useState(1);
 
-    // 🔥 FETCH BLOGS
-    const fetchBlogs = async () => {
-        const res = await GET("/api/v1/blogs", {
-            params: { page, search, category },
-        });
-        setBlogs(res.data.blogs);
-        setTotalPages(res.data.pages);
-    };
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [category, setCategory] = useState("");
 
-    useEffect(() => {
-        fetchBlogs();
-    }, [page, search, category]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
 
-    // 🔥 DELETE
-    const handleDelete = async (id: string) => {
-        if (!confirm("Delete this blog?")) return;
+  const [form, setForm] = useState({
+    title: "",
+    category: "",
+    description: "",
+    content: "",
+  });
 
-        await DELETE(`/api/blogs/${id}`);
-        fetchBlogs();
-    };
+  const [image, setImage] = useState<File | null>(null);
 
-    // 🔥 UPDATE
-    const handleUpdate = async () => {
-        await PUT(`/api/blogs/${selected._id}`, selected);
-        setSelected(null);
-        fetchBlogs();
-    };
+  // ✅ NEW → preview image (fix edit issue)
+  const [previewImage, setPreviewImage] = useState<string>("");
 
-    return (
-        <div className="p-6">
-            {/* HEADER */}
-            <h2 className="text-2xl font-bold mb-4">Manage Blogs</h2>
+  // debounce
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
-            {/* SEARCH + FILTER */}
-            <div className="flex flex-wrap gap-3 mb-4">
-                <input
-                    placeholder="Search blogs..."
-                    className="border px-3 py-2 rounded w-64"
-                    onChange={(e) => setSearch(e.target.value)}
+  const fetchBlogs = async () => {
+    setLoading(true);
+    try {
+      const res = await GET("/api/v1/blogs");
+      setAllBlogs(res.data.blogs);
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBlogs();
+  }, []);
+
+  // FILTER
+  useEffect(() => {
+    let data = [...allBlogs];
+
+    if (debouncedSearch) {
+      data = data.filter((b) =>
+        b.title.toLowerCase().includes(debouncedSearch.toLowerCase())
+      );
+    }
+
+    if (category) {
+      data = data.filter((b) => b.category === category);
+    }
+
+    setFilteredBlogs(data);
+    setPage(1);
+  }, [debouncedSearch, category, allBlogs]);
+
+  // PAGINATION
+  useEffect(() => {
+    const start = (page - 1) * limit;
+    const end = start + limit;
+
+    setBlogs(filteredBlogs.slice(start, end));
+    setTotalPages(Math.ceil(filteredBlogs.length / limit));
+  }, [filteredBlogs, page, limit]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this blog?")) return;
+    await DELETE(`/api/v1/blogs/${id}`);
+    fetchBlogs();
+  };
+
+  const handleSave = async () => {
+    try {
+      const formData = new FormData();
+
+      Object.entries(form).forEach(([k, v]) =>
+        formData.append(k, v || "") // ✅ content optional
+      );
+
+      if (image) formData.append("image", image);
+
+      if (isEdit && selected) {
+        await PUT(`/api/v1/blogs/${selected._id}`, formData);
+      } else {
+        await POST("/api/v1/blogs", formData);
+      }
+
+      setIsModalOpen(false);
+      setSelected(null);
+      setImage(null);
+      setPreviewImage(""); // ✅ reset preview
+
+      setForm({
+        title: "",
+        category: "",
+        description: "",
+        content: "",
+      });
+
+      fetchBlogs();
+    } catch (err) {
+      console.error(err);
+      alert("Error saving blog");
+    }
+  };
+
+  // ✅ CATEGORY FROM DATA (dynamic)
+  const categories = [...new Set(allBlogs.map((b) => b.category))];
+
+  if (loading) {
+    return <Loader/>;
+  }
+
+  return (
+    <div className="p-6">
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Manage Blogs</h2>
+
+        <button
+          onClick={() => {
+            setForm({
+              title: "",
+              category: "",
+              description: "",
+              content: "",
+            });
+            setImage(null);
+            setPreviewImage(""); // reset
+            setIsEdit(false);
+            setIsModalOpen(true);
+          }}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+        >
+          + Create Blog
+        </button>
+      </div>
+
+      {/* SEARCH + FILTER */}
+      <div className="flex gap-3 mb-4">
+        <input
+          placeholder="Search blogs..."
+          className="border px-3 py-2 rounded w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        <select
+          className="border px-3 py-2 rounded focus:outline-none"
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option value="">All</option>
+          {categories.map((cat, i) => (
+            <option key={i} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* TABLE */}
+      <div className="overflow-x-auto rounded-lg shadow">
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-gray-100 text-gray-700">
+            <tr>
+              <th className="p-3 text-left">Image</th>
+              <th className="p-3 text-left">Title</th>
+              <th className="p-3 text-left">Category</th>
+              <th className="p-3 text-left">Description</th>
+              <th className="p-3 text-left">Content</th>
+              <th className="p-3 text-left">Created</th>
+              <th className="p-3 text-center">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {blogs.map((b) => (
+              <tr key={b._id} className="border-t hover:bg-gray-50 transition">
+                <td className="p-3">
+                  <img src={b.image} className="w-14 h-14 object-cover rounded" />
+                </td>
+                <td className="p-3">{b.title}</td>
+                <td className="p-3">{b.category}</td>
+                <td className="p-3 max-w-xs truncate">{b.description}</td>
+                <td
+                  className="p-3 max-w-xs truncate"
+                  dangerouslySetInnerHTML={{ __html: b.content }}
                 />
+                <td className="p-3">
+                  {new Date(b.createdAt).toLocaleDateString()}
+                </td>
 
-                <select
-                    className="border px-3 py-2 rounded"
-                    onChange={(e) => setCategory(e.target.value)}
-                >
-                    <option value="">All Categories</option>
-                    <option value="Electronics">Electronics</option>
-                    <option value="Clothing">Clothing</option>
-                    <option value="Beauty">Beauty</option>
-                    <option value="Groceries">Groceries</option>
-                </select>
-            </div>
+                <td className="p-3 text-center">
+                  <div className="flex justify-center gap-3">
+                    <button
+                      onClick={() => {
+                        setSelected(b);
+                        setForm({
+                          title: b.title,
+                          category: b.category,
+                          description: b.description,
+                          content: b.content || "",
+                        });
+                        setPreviewImage(b.image); // ✅ FIX: show existing image
+                        setImage(null);
+                        setIsEdit(true);
+                        setIsModalOpen(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <FaEdit />
+                    </button>
 
-            {/* TABLE */}
-            <div className="overflow-x-auto">
-                <table className="w-full border rounded-lg overflow-hidden shadow">
-                    <thead className="bg-gray-100 text-left">
-                        <tr>
-                            <th className="p-3">Title</th>
-                            <th className="p-3">Category</th>
-                            <th className="p-3">Created</th>
-                            <th className="p-3 text-center">Actions</th>
-                        </tr>
-                    </thead>
+                    <button
+                      onClick={() => handleDelete(b._id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-                    <tbody>
-                        {blogs.length === 0 ? (
-                            <tr>
-                                <td colSpan={4} className="text-center p-4">
-                                    No blogs found
-                                </td>
-                            </tr>
-                        ) : (
-                            blogs.map((blog) => (
-                                <tr key={blog._id} className="border-t hover:bg-gray-50">
-                                    <td className="p-3 font-medium">{blog.title}</td>
-                                    <td className="p-3">{blog.category}</td>
-                                    <td className="p-3">
-                                        {new Date(blog.createdAt).toLocaleDateString()}
-                                    </td>
+      {/* ✅ PAGINATION ONLY IF DATA EXISTS */}
+      {filteredBlogs.length > 0 && (
+        <div className="mt-6 flex justify-center items-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+            className="px-4 py-2 border rounded hover:bg-gray-100 disabled:opacity-50"
+            disabled={page === 1}
+          >
+            Prev
+          </button>
 
-                                    <td className="p-3 text-center space-x-2">
-                                        <button
-                                            onClick={() => setSelected(blog)}
-                                            className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                                        >
-                                            Edit
-                                        </button>
+          <span className="font-medium">
+            Page {page} of {totalPages}
+          </span>
 
-                                        <button
-                                            onClick={() => handleDelete(blog._id)}
-                                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* PAGINATION */}
-            <div className="flex justify-between items-center mt-4">
-                <button
-                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                    className="px-3 py-1 border rounded"
-                >
-                    Prev
-                </button>
-
-                <span>
-                    Page {page} of {totalPages}
-                </span>
-
-                <button
-                    onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
-                    className="px-3 py-1 border rounded"
-                >
-                    Next
-                </button>
-            </div>
-
-            {/* EDIT MODAL */}
-            {selected && (
-                <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-                    <div className="bg-white p-6 w-[500px] rounded-lg shadow-lg">
-                        <h3 className="text-xl font-semibold mb-4">Edit Blog</h3>
-
-                        <input
-                            value={selected.title}
-                            onChange={(e) =>
-                                setSelected({ ...selected, title: e.target.value })
-                            }
-                            className="border w-full p-2 mb-3 rounded"
-                        />
-
-                        <input
-                            value={selected.category}
-                            onChange={(e) =>
-                                setSelected({ ...selected, category: e.target.value })
-                            }
-                            className="border w-full p-2 mb-3 rounded"
-                        />
-
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => setSelected(null)}
-                                className="px-3 py-1 border rounded"
-                            >
-                                Cancel
-                            </button>
-
-                            <button
-                                onClick={handleUpdate}
-                                className="bg-blue-500 text-white px-4 py-1 rounded"
-                            >
-                                Save
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+          <button
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+            className="px-4 py-2 border rounded hover:bg-gray-100 disabled:opacity-50"
+            disabled={page === totalPages}
+          >
+            Next
+          </button>
         </div>
-    );
+      )}
+
+      {/* MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center">
+          <div className="bg-white p-6 w-[600px] rounded">
+            <h3 className="text-xl mb-3">
+              {isEdit ? "Edit Blog" : "Create Blog"}
+            </h3>
+
+            <input
+              placeholder="Title"
+              value={form.title}
+              onChange={(e) =>
+                setForm({ ...form, title: e.target.value })
+              }
+              className="border w-full mb-2 p-2"
+            />
+
+            <input
+              placeholder="Category"
+              value={form.category}
+              onChange={(e) =>
+                setForm({ ...form, category: e.target.value })
+              }
+              className="border w-full mb-2 p-2"
+            />
+
+            <input
+              placeholder="Description"
+              value={form.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+              className="border w-full mb-2 p-2"
+            />
+
+            <label className="block font-medium mt-1 text-gray-400">
+              Content (optional)
+            </label>
+
+            <ReactQuill
+              value={form.content || ""}
+              onChange={(val) =>
+                setForm({ ...form, content: val })
+              }
+              className="mb-3"
+            />
+
+            {/* ✅ IMAGE PREVIEW */}
+            {previewImage && (
+              <img
+                src={previewImage}
+                className="w-24 h-24 object-cover rounded mb-2"
+              />
+            )}
+
+            <input
+              type="file"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setImage(file);
+                  setPreviewImage(URL.createObjectURL(file)); // new preview
+                }
+              }}
+              className="mb-3"
+            />
+
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setIsModalOpen(false)}>
+                Cancel
+              </button>
+
+              <button
+                onClick={handleSave}
+                className="bg-blue-500 text-white px-4 py-1"
+              >
+                {isEdit ? "Update" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default AdminBlogs;

@@ -3,6 +3,7 @@ import { MessagesList } from "./MessagesList";
 import { ChatInput } from "./ChatInput";
 import { RiChatNewLine } from "react-icons/ri";
 import { Socket } from "socket.io-client";
+import { Chat } from "./chat";
 
 interface Message {
   id: string;
@@ -13,15 +14,6 @@ interface Message {
   senderAvatar?: string;
   isRead?: boolean;
   status?: "sending" | "sent" | "failed";
-}
-
-interface Chat {
-  id: string;
-  name: string;
-  isOnline: boolean;
-  isGroup: boolean;
-  memberCount?: number;
-  avatar?: string;
 }
 
 interface ChatAreaProps {
@@ -64,8 +56,8 @@ export function ChatArea({
   return (
     <div className="flex-1 flex flex-col bg-background">
       <ChatHeader
-        chatName={selectedChat.name}
-        isOnline={selectedChat.isOnline}
+        chatName={selectedChat.chatName}
+        //isOnline={selectedChat.isOnline}
         isGroup={selectedChat.isGroup}
         memberCount={selectedChat.memberCount}
         avatar={selectedChat.avatar}

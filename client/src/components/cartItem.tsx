@@ -52,70 +52,98 @@ const CartItem = ({ item }: any) => {
     : "/placeholder.png";
 
   return (
-    <div className="border rounded-md p-3 flex gap-4 items-center hover:shadow-md transition bg-white">
+    <div className="border rounded-md p-3 flex gap-3 sm:gap-4 items-start sm:items-center 
+  hover:shadow-md transition bg-white dark:bg-gray-800 
+  border-gray-200 dark:border-gray-700">
 
-      {/* IMAGE */}
-      <div className="w-[110px] h-[110px] flex-shrink-0">
-        <Link to={`/product/${product._id}`}>
-          <img
-            src={imageUrl}
-            className="w-full h-full object-cover rounded-md"
-          />
-        </Link>
-      </div>
+  {/* IMAGE */}
+  <div className="w-[90px] h-[90px] sm:w-[110px] sm:h-[110px] flex-shrink-0">
+    <Link to={`/product/${product._id}`}>
+      <img
+        src={imageUrl}
+        className="w-full h-full object-cover rounded-md"
+        alt={product.name}
+      />
+    </Link>
+  </div>
 
-      {/* INFO */}
-      <div className="flex-1 relative">
+  {/* INFO */}
+  <div className="flex-1 relative">
 
-        <IoCloseSharp
-          onClick={() => deleteItem(product._id)}
-          className="absolute right-0 top-0 cursor-pointer text-[18px] hover:text-red-500"
-        />
+    {/* REMOVE BUTTON */}
+    <IoCloseSharp
+      onClick={() => deleteItem(product._id)}
+      className="absolute right-0 top-0 cursor-pointer text-[18px] 
+      text-gray-500 dark:text-gray-400 
+      hover:text-red-500"
+    />
 
-        <p className="text-xs text-gray-500">{product.brand}</p>
+    {/* BRAND */}
+    <p className="text-xs text-gray-500 dark:text-gray-400">
+      {product.brand}
+    </p>
 
-        <h3 className="text-sm font-medium pr-6">
-          <Link to={`/product/${product._id}`} className="hover:text-primary">
-            {product.name}
-          </Link>
-        </h3>
+    {/* NAME */}
+    <h3 className="text-sm sm:text-base font-medium pr-6 text-gray-800 dark:text-gray-100 line-clamp-2">
+      <Link
+        to={`/product/${product._id}`}
+        className="hover:text-primary transition"
+      >
+        {product.name}
+      </Link>
+    </h3>
 
-        <div className="flex gap-2 mt-1 text-sm items-center">
-          <span className="font-bold">
-            ₹{Number(product.finalPrice || 0).toFixed(2)}
-          </span>
-          <span className="line-through text-gray-400 text-xs">
-            ₹{Number(product.listedPrice || 0).toFixed(2)}
-          </span>
+    {/* PRICE */}
+    <div className="flex flex-wrap gap-2 mt-1 text-sm items-center">
+      <span className="font-bold text-gray-900 dark:text-white">
+        ₹{Number(product.finalPrice || 0).toFixed(2)}
+      </span>
 
-          <span className="text-red-500 text-xs">
-            {product.discountPercentage}% OFF
-          </span>
-        </div>
+      <span className="line-through text-gray-400 text-xs">
+        ₹{Number(product.listedPrice || 0).toFixed(2)}
+      </span>
 
-        <div className="mt-2">
-          <span
-            onClick={handleQtyClick}
-            className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded cursor-pointer text-xs"
-          >
-            Qty: <b>{selectedQty}</b>
-            <GoTriangleDown />
-          </span>
-
-          <Menu
-            anchorEl={qtyAnchorEl}
-            open={qtyOpen}
-            onClose={() => handleQtyClose(null)}
-          >
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((qty) => (
-              <MenuItem key={qty} onClick={() => handleQtyClose(qty)}>
-                {qty}
-              </MenuItem>
-            ))}
-          </Menu>
-        </div>
-      </div>
+      <span className="text-red-500 text-xs font-medium">
+        {product.discountPercentage}% OFF
+      </span>
     </div>
+
+    {/* QUANTITY */}
+    <div className="mt-2">
+      <span
+        onClick={handleQtyClick}
+        className="inline-flex items-center gap-1 
+        bg-gray-100 dark:bg-gray-800 
+        px-2 py-1 rounded cursor-pointer text-xs 
+        text-gray-800 dark:text-gray-200 
+        hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+      >
+        Qty: <b>{selectedQty}</b>
+        <GoTriangleDown />
+      </span>
+
+      <Menu
+        anchorEl={qtyAnchorEl}
+        open={qtyOpen}
+        onClose={() => handleQtyClose(null)}
+        PaperProps={{
+          className:
+            "dark:bg-gray-900 dark:text-gray-200 border dark:border-gray-700",
+        }}
+      >
+        {[1,2,3,4,5,6,7,8,9,10].map((qty) => (
+          <MenuItem
+            key={qty}
+            onClick={() => handleQtyClose(qty)}
+            className="dark:hover:bg-gray-800"
+          >
+            {qty}
+          </MenuItem>
+        ))}
+      </Menu>
+    </div>
+  </div>
+</div>
   );
 };
 

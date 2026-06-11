@@ -162,10 +162,10 @@ const ProductCard = ({
             )}
           </Button>
         ) : (
-          <div className="flex items-center justify-between !w-[90%] border border-gray-900 rounded-md !mx-auto !my-4 text-red-400">
+          <div className="flex items-center justify-between !w-[90%] border border-gray-900 dark:border-gray-100 rounded-md !mx-auto !my-4 text-red-400">
             <IconButton
               onClick={() => handleDecrease(product._id)}
-              className="!text-gray-80000 cursor-pointer border-r"
+              className="!text-gray-800 dark:!text-gray-200 cursor-pointer border-r"
             >
               <RemoveIcon className="!text-[18px]" />
             </IconButton>
@@ -175,7 +175,7 @@ const ProductCard = ({
 
             <Button
               onClick={() => navigate("/cartpage")}
-              className="!text-gray-800 font-medium text-nowrap !text-[12px]"
+              className="!text-gray-800 dark:!text-gray-200 font-medium text-nowrap !text-[12px]"
             >
               GO TO CART ({qty})
             </Button>
@@ -185,7 +185,7 @@ const ProductCard = ({
 
             <IconButton
               onClick={() => handleIncrease(product._id)}
-              className="!text-gray-800-400 cursor-pointer"
+              className="!text-gray-800 dark:!text-gray-200 cursor-pointer"
             >
               <AddIcon className="!text-[18px]" />
             </IconButton>

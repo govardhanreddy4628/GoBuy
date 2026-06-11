@@ -11,27 +11,13 @@ import { ScrollArea } from "../../../ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../ui/avatar";
 import { Badge } from "../../../ui/badge";
 import { IoFilterSharp } from "react-icons/io5";
-
-
-export interface Chat {
-  id: string;
-  name: string;
-  memberCount?: number;
-  lastMessage: string;
-  timestamp: string;
-  unreadCount: number;
-  isOnline: boolean;
-  avatar?: string;
-  isGroup: boolean;
-  members?: string[];
-}
+import { Chat } from "./chat";
 interface ChatSidebarProps {
   chats: Chat[];
   selectedChatId?: string;
   onChatSelect: (chatId: string) => void;
   handleNewChat?: () => void;
 }
-
 
 export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,7 +40,7 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
       .filter(chat => {
         // 🔍 search filter
         const matchesSearch =
-          (chat.name ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (chat.chatName ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
           (chat.lastMessage ?? "").toLowerCase().includes(searchQuery.toLowerCase());
 
         // 🎯 type filter
@@ -239,7 +225,7 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
                       {chat.isGroup ? (
                         <Users className="h-6 w-6" />
                       ) : (
-                        chat.name ? chat.name.split(' ').map(n => n[0]).join('') : 'N/A'
+                        chat.chatName ? chat.chatName.split(' ').map(n => n[0]).join('') : 'N/A'
                       )}
                     </AvatarFallback>
                   </Avatar>
@@ -252,7 +238,7 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
                 <div className="flex-1 min-w-0 max-w-48">
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium text-foreground truncate">
-                      {chat.name}
+                      {chat.chatName}
                     </h3>
                     <span className="text-xs text-muted-foreground">
                       {new Date(chat.timestamp).toLocaleTimeString([], {

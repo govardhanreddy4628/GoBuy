@@ -64,7 +64,7 @@ const Chat = () => {
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const token = getAccessToken(); 
+  const token = getAccessToken();
 
   const { user } = useAuth();
   console.log(user)
@@ -109,11 +109,55 @@ const Chat = () => {
 
   console.log(isConnected)
 
+  function getLastMessagePreview(message: any): string {
+    if (!message) return "";
+
+    switch (message.type) {
+      case "text":
+        return message.text?.trim() || "New message";
+
+      case "image":
+        return message.text
+          ? `📷 ${message.text}`
+          : "📷 Photo";
+
+      case "video":
+        return message.text
+          ? `🎥 ${message.text}`
+          : "🎥 Video";
+
+      case "audio":
+        return "🎵 Audio";
+
+      case "document":
+        return message.text
+          ? `📄 ${message.text}`
+          : "📄 Document";
+
+      case "location":
+        return `📍 ${message.location?.address || "Location"}`;
+
+      case "contact":
+        return `👤 ${message.contact?.name || "Contact"}`;
+
+      case "sticker":
+        return "😊 Sticker";
+
+      case "call":
+        return "📞 Call";
+
+      case "system":
+        return message.text || "System message";
+
+      default:
+        return "New message";
+    }
+  }
   useEffect(() => {
     if (!currentUserId) return;
     const fetchChats = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL_LOCAL}/api/v1/chat`, { credentials: "include", headers: {Authorization: `Bearer ${token}`}});
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL_LOCAL}/api/v1/chat`, { credentials: "include", headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
 
         const formatted: Chat[] = data.map((chat: any) => ({
@@ -121,7 +165,7 @@ const Chat = () => {
           name: chat.isGroup
             ? chat.chatName
             : chat.members.find((m: any) => m._id !== currentUserId)?.fullName ?? "Unknown",
-          lastMessage: chat.lastMessage?.content ?? "",
+          lastMessage: getLastMessagePreview(chat.lastMessage),
           timestamp: chat.updatedAt,
           unreadCount: 0,
           isOnline: false,
@@ -139,26 +183,46 @@ const Chat = () => {
     fetchChats();
   }, [currentUserId, token]);
 
+  function getMessageContent(msg: any): string {
+    switch (msg.type) {
+      case "text":
+        return msg.text || "";
+
+      case "image":
+      case "video":
+      case "audio":
+      case "document":
+        return msg.media?.url || "";
+
+      case "location":
+        return `📍 ${msg.location?.address || "Location"}`;
+
+      case "contact":
+        return `👤 ${msg.contact?.name || "Contact"}`;
+
+      default:
+        return "";
+    }
+  }
   // fetch messages when a real chat is selected
   useEffect(() => {
     if (!selectedChatId || selectedChatId.startsWith("temp")) return;
-
     const fetchMessages = async () => {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL_LOCAL}/api/v1/chat/messages/${selectedChatId}`,
-          { credentials: "include", headers: {Authorization: `Bearer ${token}`} }
+          { credentials: "include", headers: { Authorization: `Bearer ${token}` } }
         );
         const data = await res.json();
 
         const formatMessage: Message[] = data.map((msg: any) => ({
           id: msg._id,
-          content: msg.content,
+          content: getMessageContent(msg),
           timestamp: new Date(msg.createdAt),
-          isOwn: msg.sender._id === currentUserId,
-          senderName: msg.sender.fullName,
-          senderAvatar: msg.sender.avatar,
-          isRead: msg.readby?.includes(currentUserId),
+          isOwn: msg.sender?._id === currentUserId,
+          senderName: msg.sender?.fullName,
+          senderAvatar: msg.sender?.avatar,
+          isRead: msg.readBy?.includes(currentUserId),
           status: "sent" as const,
         }));
 
@@ -187,7 +251,7 @@ const Chat = () => {
 
     socketRef.current = io(backendUrl + "/admin", {
       auth: {
-        token, 
+        token,
       },
       withCredentials: true, // Add this at the top level
       transports: ["websocket", "polling"], // Add polling as fallback
@@ -214,9 +278,9 @@ const Chat = () => {
     });
 
     sock.emit("MARK_SEEN", {
-    chatId: selectedChatId,
-    userId: currentUserId,
-  });
+      chatId: selectedChatId,
+      userId: currentUserId,
+    });
 
     // Listen for icoming messages or Receive message
     sock.on(EVENTS.NEW_MESSAGE, ({ chatId, message, chat: incomingChat }) => {

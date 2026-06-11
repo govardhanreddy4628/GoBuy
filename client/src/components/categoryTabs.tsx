@@ -47,9 +47,9 @@ const CategoryTabs = ({ handleClickOpen, handleOpenAiChat }: { handleClickOpen: 
           >
             {/* Left: Heading */}
             <div className="flex flex-col justify-start">
-              <h1 className="text-[24px] font-bold">Popular Products</h1>
-              <p className="text-[14px]">
-                Do not miss the current offers until the end of March.
+              <h1 className="md:text-[24px] text-[18px] font-bold">Popular Products</h1>
+              <p className="text-[14px] hidden md:block">
+                Do not miss the current offers until the end of the Month.
               </p>
             </div>
 
@@ -61,13 +61,20 @@ const CategoryTabs = ({ handleClickOpen, handleOpenAiChat }: { handleClickOpen: 
               variant="scrollable"
               scrollButtons
               allowScrollButtonsMobile
+              TabIndicatorProps={{
+                className: "!bg-red-500 h-[3px]" // 👈 red underline
+              }}
             >
               {rootCategories.map((cat, index) => (
                 <Tab
                   key={cat._id}
                   label={cat.name}
                   id={`simple-tab-${index}`}
-                  className="dark:!text-gray-300"
+                  className="
+        !text-gray-700 
+        dark:!text-gray-300 
+        data-[selected=true]:!text-red-500
+      "
                 />
               ))}
             </Tabs>

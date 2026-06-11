@@ -28,7 +28,7 @@ export const SavedAddresses = ({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium flex items-center gap-2">
+      <h3 className="text-sm font-medium flex items-center gap-2 text-gray-800 dark:text-gray-100">
         <MapPin className="h-4 w-4" />
         Saved Addresses
       </h3>
@@ -38,71 +38,88 @@ export const SavedAddresses = ({
         onValueChange={onSelectAddress}
         className="space-y-3"
       >
-        {addresses.map((address) => (
-          <Card
-            key={address._id}
-            className={`p-4 transition-all ${
-              selectedAddressId === address._id
-                ? "border-red-500 shadow-md"
-                : "hover:shadow-sm"
-            }`}
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex gap-3">
-                <RadioGroupItem
-                  value={address._id}
-                  id={address._id}
-                />
+        {addresses.map((address) => {
+          const isActive = selectedAddressId === address._id;
 
-                <Label
-                  htmlFor={address._id}
-                  className="cursor-pointer"
-                >
-                  <p className="font-medium">
-                    {address.fullName}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {address.address_line}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {address.city}, {address.state} -{" "}
-                    {address.pincode}
-                  </p>
-                </Label>
-              </div>
+          return (
+            <Card
+              key={address._id}
+              className={`p-4 transition-all border relative
+            bg-white dark:bg-gray-900
+            border-gray-200 dark:border-gray-700
+            ${isActive
+                  ? "border-red-500 shadow-md"
+                  : "hover:shadow-sm"
+                }`}
+            >
+              {/* TOP ROW */}
+              <div className="flex justify-between items-start">
 
-              {/* ICON ACTIONS */}
-              <div className="flex gap-1">
-                <Tooltip title="Edit">
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation(); // prevents radio select
-                      onEdit(address);
-                    }}
+                {/* LEFT (RADIO + TEXT) */}
+                <div className="flex gap-3">
+                  <RadioGroupItem
+                    value={address._id}
+                    id={address._id}
+                    className="
+    mt-1
+    border-gray-600
+    text-red-500
+    data-[state=checked]:border-red-500
+    dark:border-gray-400
+  "
+                  />
+
+                  <Label
+                    htmlFor={address._id}
+                    className="cursor-pointer text-sm"
                   >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
+                      {address.fullName}
+                    </p>
 
-                <Tooltip title="Delete">
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation(); // prevents radio select
-                      onDelete(address._id);
-                    }}
-                  >
-                    <DeleteIcon
-                      fontSize="small"
-                      color="error"
-                    />
-                  </IconButton>
-                </Tooltip>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {address.address_line}
+                    </p>
+
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {address.city}, {address.state} -{" "}
+                      {address.pincode}
+                    </p>
+                  </Label>
+                </div>
+
+                {/* RIGHT ICONS (FIXED ALIGNMENT) */}
+                <div className="flex gap-1 shrink-0">
+                  <Tooltip title="Edit">
+                    <IconButton
+                      size="small"
+                      className="text-gray-500 dark:text-gray-300 hover:text-blue-500"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(address);
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
+                  <Tooltip title="Delete">
+                    <IconButton
+                      size="small"
+                      className="text-gray-500 dark:text-gray-300 hover:text-red-500"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(address._id);
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </RadioGroup>
     </div>
   );

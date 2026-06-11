@@ -15,9 +15,9 @@ const Home = () => {
             onClick={() => navigate("/customersupport")}
             className="
         fixed bottom-6 right-6 
-        bg-blue-600 text-white 
+        bg-red-600 text-white 
         p-4 rounded-lg shadow-lg 
-        hover:bg-blue-700 transition 
+        hover:bg-red-700 transition 
         flex items-center justify-center z-50
       "
             aria-label="Chat with us"

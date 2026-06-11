@@ -1,49 +1,37 @@
 import { Request, Response } from "express";
 import blogsModel from "../models/blogsModel.js";
-
+import cloudinary from "../config/cloudinary.js";
 
 // CREATE
 export const createBlog = async (req: any, res: any) => {
   try {
-    const image = req.file
-      ? `/public/${req.folder || "uploads"}/${req.file.filename}`
-      : "";
+    let imageUrl = "";
 
-    const blog = await Blog.create({
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "blogs",
+      });
+      imageUrl = result.secure_url;
+    }
+
+    const blog = await blogsModel.create({
       ...req.body,
-      image,
+      image: imageUrl,
     });
 
     res.status(201).json(blog);
   } catch (err) {
-    res.status(500).json({ message: "Error creating blog", err });
+    res.status(500).json({ message: "Error creating blog" });
   }
 };
 
-
-// GET ALL (pagination + search + filter)
+// ✅ GET ALL (NO FILTER, NO PAGINATION)
 export const getBlogs = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 6, search = "", category } = req.query;
-
-    const query: any = {
-      title: { $regex: search, $options: "i" },
-    };
-
-    if (category) query.category = category;
-
-    const blogs = await blogsModel.find(query)
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit))
-      .sort({ createdAt: -1 });
-
-    const total = await blogsModel.countDocuments(query);
+    const blogs = await blogsModel.find().sort({ createdAt: -1 });
 
     res.json({
       blogs,
-      total,
-      page: Number(page),
-      pages: Math.ceil(total / Number(limit)),
     });
   } catch {
     res.status(500).json({ message: "Error fetching blogs" });
@@ -62,11 +50,23 @@ export const getBlogById = async (req: Request, res: Response) => {
 };
 
 // UPDATE
-export const updateBlog = async (req: Request, res: Response) => {
+export const updateBlog = async (req: any, res: any) => {
   try {
-    const blog = await blogsModel.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    let updateData = { ...req.body };
+
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "blogs",
+      });
+      updateData.image = result.secure_url;
+    }
+
+    const blog = await blogsModel.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
     res.json(blog);
   } catch {
     res.status(500).json({ message: "Error updating blog" });

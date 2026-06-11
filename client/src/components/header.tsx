@@ -6,7 +6,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import RocketLaunchOutlinedIcon from '@mui/icons-material/RocketLaunchOutlined';
 import MenuOutlinedIcon from '@mui/icons-material/MenuOutlined';
 import ExpandMoreOutlinedIcon from '@mui/icons-material/ExpandMoreOutlined';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ThemeToggle } from '../ui/themeToggle';
 import SideDrawer from '../ui/drawer';
 import LeftMenu from './leftMenu';
@@ -25,6 +25,8 @@ import Search from './search';
 import SmartSearch from './smartSearch';
 import SearchBar from './smartSearch';
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import { GET } from '../api/api_utility';
+import { FaUserCircle } from "react-icons/fa";
 
 const HIDDEN_SLUGS = ["miscellaneous"];
 interface Category {
@@ -36,68 +38,6 @@ interface Category {
     }[];
 }
 
-const categories: Category[] = [
-    {
-        name: "fashion",
-        path: "/productcategory",
-        subcategories: [
-            { name: "Men", children: ["Shirts", "Trousers", "Shoes"] },
-            { name: "Women", children: ["Dresses", "Heels", "Bags"] },
-            { name: "Girls", children: ["Tops", "Jeans", "Shoes"] },
-            { name: "Kids", children: ["Toys", "Clothing", "Accessories"] },
-        ]
-    },
-    {
-        name: "electronics",
-        path: "/electronics",
-        subcategories: [
-            { name: "Mobiles", children: ["Android", "iOS", "Accessories"] },
-            { name: "Laptops", children: ["Gaming", "Ultrabooks", "Accessories"] },
-        ]
-    },
-    {
-        name: "bags",
-        path: "/bags",
-        subcategories: [
-            { name: "Handbags", children: ["Leather", "Fabric", "Designer"] },
-            { name: "Backpacks", children: ["Laptop", "Travel", "Casual"] },
-        ]
-    },
-    {
-        name: "footwear",
-        path: "/footwear",
-        subcategories: [
-            { name: "Men", children: ["Sneakers", "Sandals", "Formal"] },
-            { name: "Women", children: ["Heels", "Flats", "Boots"] },
-        ]
-    },
-    {
-        name: "groceries",
-        path: "/groceries",
-        subcategories: [
-            { name: "Fruits", children: ["Fresh", "Frozen"] },
-            { name: "Vegetables", children: ["Leafy", "Root"] },
-        ]
-    },
-    {
-        name: "beauty",
-        path: "/beauty",
-        subcategories: [
-            { name: "Skincare", children: ["Face", "Body", "Sunscreen"] },
-            { name: "Makeup", children: ["Lipstick", "Foundation", "Blush"] },
-        ]
-    },
-    {
-        name: "wellness",
-        path: "/wellness",
-        subcategories: [
-            { name: "Supplements", children: ["Vitamins", "Proteins"] },
-            { name: "Fitness", children: ["Yoga", "Gym Equipment"] },
-        ]
-    },
-
-];
-
 
 const Header = () => {
     const [searchValue, setSearchValue] = useState("");
@@ -106,6 +46,9 @@ const Header = () => {
     const [anchor, setAnchor] = useState<'left' | 'right'>('left');
     const [accanchorEl, setAccAnchorEl] = useState<null | HTMLElement>(null);
     const [loginHover, setLoginHover] = useState(false);
+    const [logo, setLogo] = useState("");
+    const [openSearch, setOpenSearch] = useState(false);
+
 
     const { getCartCount } = useCart();
     const { wishlist } = useWishlist(); // assuming your context exposes `wishlist` array
@@ -155,25 +98,60 @@ const Header = () => {
     };
 
     const userInitial = user?.email?.charAt(0).toUpperCase() ?? "";
+
+    useEffect(() => {
+        GET("/api/v1/logos/active").then((res) => {
+            setLogo(res.data.logo?.image);
+            console.log(res.data)
+        });
+    }, []);
+
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setOpenSearch(false);
+        };
+        window.addEventListener("keydown", handleEsc);
+        return () => window.removeEventListener("keydown", handleEsc);
+    }, []);
+
     return (
         <div className='relative'>
             {/* Top Header */}
             {isHome &&
-                <section className="row1 max-w-8xl bg-foreground text-muted px-4 py-3 flex border-b border-border border-solid">
-                    <div className='flex flex-col sm:flex-row items-center justify-between lg:w-[95%] w-full mx-auto'>
-                        <p className='text-sm font-medium'>Get up to 50% off new season styles, limited time only</p>
-                        <ul className='flex items-center gap-4  mt-2 sm:mt-0'>
-                            <li><Link to="#" className='text-inherit hover:text-red-300 text-sm font-medium'>Help Center</Link></li>
-                            <li><Link to="#" className='text-inherit hover:text-red-300 text-sm font-medium'>Order Tracking</Link></li>
+                <section className="row1 hidden lg:block max-w-8xl bg-foreground text-muted px-4 py-3 border-b border-border border-solid">
+                    <div className="flex flex-col sm:flex-row items-center justify-between lg:w-[95%] w-full mx-auto">
+                        <p className="text-sm font-medium">
+                            Get up to 50% off new season styles, limited time only
+                        </p>
+
+                        <ul className="flex items-center gap-4 mt-2 sm:mt-0">
+                            <li>
+                                <Link to="#" className="text-inherit hover:text-red-300 text-sm font-medium">
+                                    Help Center
+                                </Link>
+                            </li>
+                            <li>
+                                <Link to="#" className="text-inherit hover:text-red-300 text-sm font-medium">
+                                    Order Tracking
+                                </Link>
+                            </li>
                         </ul>
                     </div>
                 </section>
             }
 
             {/* secondary header */}
-            <section className='row2 bg-background  border-b border-b-border border-solid'>
-                <div className='flex justify-between items-center p-2.5 w-[95%] mx-auto '>
-                    <div className='col1 w-[30%]'><img src="https://serviceapi.spicezgold.com/download/1744255975457_logo.jpg" /></div>
+            <section className='row2 bg-background border-b border-b-border border-solid'>
+                <div className='flex justify-between items-center p-1.5 w-[95%] mx-auto '>
+                    {/* ✅ LOGO */}
+                    <div className='flex items-center min-w-[380px]'>
+                        {logo && (
+                            <img
+                                src={logo}
+                                className="h-10 sm:h-12 lg:h-14 w-auto object-contain"
+                            />
+                        )}
+                    </div>
 
                     {/* <div className='col2 w-[40%] bg-slate-300 rounded-[8px] lg:flex items-center justify-between overflow-hidden hidden relative'>
                         {!searchValue && !isFocused && (
@@ -230,29 +208,59 @@ const Header = () => {
                         </div>
                     </div> */}
 
-                    <SearchBar />
+
+                    <div className="hidden lg:block w-full max-w-2xl">
+                        <SearchBar />
+                    </div>
 
                     <div className='col3 w-[30%] flex justify-center p-4 items-center'>
-                        <div className='flex items-center justify-end w-full gap-4'>
-                            {!user ? (
-                                <div className="relative group">
+                        <div className='flex items-center justify-end w-full sm:gap-4 gap-2'>
+                            <IconButton
+                                onClick={() => setOpenSearch(true)}
+                                className="p-1"
+                                sx={{ display: { xs: "flex", lg: "none" } }}
+                            >
+                                <SearchIcon className="!w-6 !h-6  text-muted-foreground" />
+                            </IconButton>
 
-                                    {/* LOGIN BUTTON */}
-                                    <Button
-                                        variant="contained"
+                            <IconButton aria-label="favorite" className="!p-2">
+                                <Link to="/wishlist" className="flex items-center justify-center">
+                                    <Badge badgeContent={wishlist.length || 0} color="warning">
+                                        <FavoriteBorderIcon className="!w-5 lg:!w-6 !h-5 lg:!h-6 text-muted-foreground dark:text-gray-300" />
+                                    </Badge>
+                                </Link>
+                            </IconButton>
+
+                            <IconButton aria-label="cart" onClick={() => toggleDrawer(true, "right")}>
+                                <Badge badgeContent={getCartCount} color="warning">
+                                    <ShoppingCartCheckoutIcon className='!w-5 lg:!w-6 !h-5 lg:!h-6 text-muted-foreground' />
+                                </Badge>
+                            </IconButton>
+                            <ThemeToggle />
+                            {!user ? (
+                                <div
+                                    className="relative"
+                                    onMouseEnter={() => setLoginHover(true)}
+                                    onMouseLeave={() => setLoginHover(false)}
+                                >
+                                    {/* ICON */}
+                                    <IconButton
+                                        aria-label="account"
                                         onClick={() => navigate("/login")}
-                                        className="!bg-red-500 hover:!bg-red-600 !text-white !font-semibold !px-5 !py-2 !rounded-md flex items-center gap-2 normal-case cursor-pointer"
+                                        className="!rounded-full cursor-pointer"
                                     >
-                                        <PersonOutlineIcon className="!w-5 !h-5 !text-white" />
-                                        Login
-                                    </Button>
+                                        <FaUserCircle className="!w-8 !h-8 text-muted-foreground dark:text-white" />
+                                    </IconButton>
 
                                     {/* DROPDOWN */}
-                                    <div className="absolute right-0 top-[48px] w-[230px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
-
+                                    <div
+                                        className={`absolute right-0 top-[48px] w-[230px] bg-white dark:bg-gray-800 
+    border border-gray-200 dark:border-gray-700 rounded-md shadow-lg 
+    transition-all duration-150 z-50
+    ${loginHover ? "opacity-100 visible" : "opacity-0 invisible"}`}
+                                    >
                                         <div className="flex flex-col py-2 text-gray-800 dark:text-gray-200">
 
-                                            {/* SIGNUP HEADER */}
                                             <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                                                 <span className="text-sm text-gray-500 dark:text-gray-400">
                                                     New Customer?
@@ -260,45 +268,34 @@ const Header = () => {
 
                                                 <Link
                                                     to="/signup"
-                                                    className="text-sm font-semibold text-red-500 hover:underline cursor-pointer"
+                                                    className="text-sm font-semibold text-red-500 hover:underline"
                                                 >
                                                     Sign Up
                                                 </Link>
                                             </div>
 
-                                            {/* MENU ITEMS */}
-
-                                            <Link
-                                                to="/login"
-                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm cursor-pointer"
-                                            >
+                                            <Link to="/login" className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                                 My Profile
                                             </Link>
 
-                                            <Link
-                                                to="/login"
-                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm cursor-pointer"
-                                            >
+                                            <Link to="/login" className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                                 Orders
                                             </Link>
 
-                                            <Link
-                                                to="/login"
-                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm cursor-pointer"
-                                            >
+                                            <Link to="/login" className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                                 Wishlist
                                             </Link>
 
-                                            <Link
-                                                to="/login"
-                                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm cursor-pointer"
-                                            >
+                                            <Link to="/login" className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                                 Rewards
+                                            </Link>
+
+                                            <Link to="/login" className="px-4 py-2 text-red-500 font-semibold hover:underline">
+                                                Login
                                             </Link>
 
                                         </div>
                                     </div>
-
                                 </div>
                             ) : (
                                 <>
@@ -383,23 +380,6 @@ const Header = () => {
                                     </Menu>
                                 </>
                             )}
-
-
-                            <IconButton aria-label="favorite">
-                                <Link to="/wishlist">
-                                    <Badge badgeContent={wishlist.length || 0} color="warning">
-                                        <FavoriteBorderIcon className='!w-5 lg:!w-6 !h-5 lg:!h-6 text-muted-foreground' />
-                                    </Badge>
-                                </Link>
-                            </IconButton>
-
-
-                            <IconButton aria-label="cart" onClick={() => toggleDrawer(true, "right")}>
-                                <Badge badgeContent={getCartCount} color="warning">
-                                    <ShoppingCartCheckoutIcon className='!w-5 lg:!w-6 !h-5 lg:!h-6 text-muted-foreground' />
-                                </Badge>
-                            </IconButton>
-                            <ThemeToggle />
                         </div>
                     </div>
                 </div>
@@ -408,7 +388,7 @@ const Header = () => {
 
             {/* tertiary header*/}
             <section className='row3 bg-background border-b border-b-border border-solid w-full'>
-                <div className='flex justify-between items-center px-2.5 w-[95%] mx-auto'>
+                <div className='flex justify-between items-center px-2.5 w-[95%] mx-auto min-h-[56px]'>
 
                     {/* LEFT */}
                     <div className='col1 w-[20%]'>
@@ -431,7 +411,7 @@ const Header = () => {
                             {!isHome && (
                                 <li className="list-none">
                                     <NavLink to="/" className="link">
-                                        <Button>Home</Button>
+                                        <Button className='!text-gray-800 dark:!text-gray-100 hover:!text-red-500'>Home</Button>
                                     </NavLink>
                                 </li>
                             )}
@@ -506,9 +486,11 @@ const Header = () => {
                     </div>
 
                     {/* RIGHT */}
-                    <div className='col3 w-[20%] flex justify-center text-slate-800 dark:text-slate-300 text-nowrap py-3 lg:py-0'>
-                        <RocketLaunchOutlinedIcon className='mr-2' />
+                    <div className="col3 w-[20%]  text-slate-800 dark:text-slate-300 text-nowrap py-3 lg:py-0 !md:mr-4 items-center pr-4">
+                        <span className='text-[14px] lg:text-[16px] flex justify-end '>
+                        <RocketLaunchOutlinedIcon className="mr-2" />
                         Super Fast Delivery
+                        </span>
                     </div>
 
                 </div>
@@ -516,6 +498,25 @@ const Header = () => {
 
             <SideDrawer open={open} toggleDrawer={toggleDrawer} anchor={anchor} drawerList={leftDrawerList} />
 
+            {openSearch && (
+                <div className="fixed inset-0 z-[999] bg-white dark:bg-gray-950 p-4 flex flex-col">
+
+                    {/* TOP BAR */}
+                    <div className="flex items-center gap-3 mb-4">
+                        <button
+                            onClick={() => setOpenSearch(false)}
+                            className="text-lg"
+                        >
+                            ←
+                        </button>
+
+                        <div className="flex-1">
+                            <SearchBar autoFocus closeSearch={() => setOpenSearch(false)} />
+                        </div>
+                    </div>
+
+                </div>
+            )}
         </div>
     )
 }

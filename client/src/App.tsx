@@ -14,7 +14,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from './context/themeContext';
 import ProductDetails from "./components/productDetails";
 //import NotFound from "./pages/NotFound";
-import Productcategory from "./components/productcategory";
+import Productcategory from "./components/mockproductcategory.tsx";
 import BlogDetail from "./components/blogs/BlogDetails.tsx";
 import BlogSection from "./components/blogs/BlogSection.tsx";
 //import { Dashboard } from "./components/admin/DashBoard/dashboard.tsx";
@@ -39,8 +39,8 @@ import AdminAgentLayout2 from "./components/admin/Agents/chatBot";
 import { CategoryProvider } from './components/admin/context/categoryContext.tsx'
 import SubCategory from "./components/admin/categories/subCategory";
 import CustomerSupport from "./pages/CustomerSupport";
-import SignUpPage from "./pages/SignUpPage.tsx";
-import LoginPage from "./pages/LoginPage.tsx";
+const SignUpPage = lazy(() => import ("./pages/SignUpPage.tsx"));
+const LoginPage = lazy(() => import("./pages/LoginPage.tsx"));
 import AdminProfile from "./components/admin/pages/ADProfile";
 import AdminSettings from "./components/admin/pages/ADSettings";
 import AdminChangePassword from "./components/admin/pages/ADchangePW";
@@ -60,11 +60,9 @@ const Checkout = lazy(() => import("./pages/Checkout.tsx"));
 import OrderConfirmation from "./pages/OrderConfirmation.tsx";
 import { AdminAgentLayout } from "./components/admin/AI/AdminAgentLayout.tsx";
 import Orders from "./components/admin/orders/Orders.tsx";
-//import { ProductProvider } from "./components/admin/context/productsContext.tsx";
-//import Counter from "./move/counter.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AdminRoute from "./routes/AdminRoute.tsx";
-import CartPage from "./pages/cartPage.tsx";
+const CartPage = lazy(() => import("./pages/cartPage.tsx"));
 import { Calendar } from "./components/admin/calendar/Calendar.tsx";
 import PhonePeClone from "./components/fakePhonepe.tsx";
 import Payment from "./components/payment/payment.tsx";
@@ -75,7 +73,10 @@ import { CustomerProvider } from "./components/admin/context/customerContext.tsx
 import AdminBlogs from "./components/admin/Blogs/BlogsManage.tsx";
 import Loader from './ui/Loader.tsx';
 import Products from './components/admin/products/AllProducts/Products.tsx';
-
+import LogoManager from './components/admin/logo/logoManagement.tsx';
+import TrackOrder from './pages/trackOrderPage.tsx';
+//import { ProductProvider } from "./components/admin/context/productsContext.tsx";
+//import Counter from "./move/counter.tsx";
 
 
 const App = () => {
@@ -131,6 +132,7 @@ const App = () => {
                       <Route path="payment" element={<Payment />}></Route>
                       <Route path="phonepe/:id" element={<PhonePeClone />}></Route>
                       <Route path="order-confirmation" element={<OrderConfirmation />}></Route>
+                      <Route path="/track-order/:orderId" element={<TrackOrder />} />
                       <Route path="customersupport" element={<CustomerSupport />}></Route>
                       <Route path="rating"></Route>
                       <Route path="starrating" element={<StarRating />}></Route>
@@ -149,6 +151,7 @@ const App = () => {
                         <Route path="agents" element={<AdminAgentLayout />} />
                         <Route path="admin-profile" element={<AdminProfile />} />
                         <Route path="blogs" element={<AdminBlogs />} />
+                        <Route path="logos" element={<LogoManager />} />
                         <Route path="chat" element={<Chat />} />
                         <Route path="calendar2" element={<Calendar2 />} />
                         <Route path="calendar" element={<Calendar />} />
@@ -188,7 +191,6 @@ const App = () => {
           </CartProvider>
         </AuthProvider>
       </ThemeProvider >
-
     </>
   )
 };

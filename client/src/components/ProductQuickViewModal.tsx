@@ -109,9 +109,10 @@ const ProductQuickViewModal: React.FC<Props> = ({ open, onClose, product }) => {
                 aria-labelledby="customized-dialog-title"
                 disableScrollLock
                 PaperProps={{
+                    className: "bg-white dark:bg-gray-900 text-black dark:text-white",
                     sx: {
                         width: 1250,
-                        maxWidth: '100%', // optional: keep it responsive
+                        maxWidth: "100%",
                     },
                 }}
             >
@@ -130,10 +131,10 @@ const ProductQuickViewModal: React.FC<Props> = ({ open, onClose, product }) => {
                 </IconButton>
                 <DialogContent>
                     {product && (
-                        <section className="max-w-9xl  bg-white rounded-lg py-6">               {/*changed*/}
-                            <div className="grid grid-cols-1 md:grid-cols-2 mx-auto">
+                        <section className="max-w-9xl bg-white dark:bg-gray-900 rounded-lg py-6 transition-colors duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 mx-auto gap-8 md:pl-0 md:gap-0">
                                 <div className='flex items-center gap-2 pl-2'>
-                                    <div className='col1.1 w-24 h-[446px]'>                   {/*changed*/}
+                                    <div className='col1.1 w-24 md:h-[446px] h-[400px]'>                    {/*changed*/}
                                         <Swiper
                                             onSwiper={setThumbsSwiper}
                                             direction='vertical'
@@ -161,7 +162,6 @@ const ProductQuickViewModal: React.FC<Props> = ({ open, onClose, product }) => {
                                             ))}
                                         </Swiper>
                                     </div>
-
 
                                     <div className='col12 w-[68%] h-[93%] flex items-center justify-center ml-4'>                   {/*changed*/}
                                         <Swiper
@@ -193,90 +193,89 @@ const ProductQuickViewModal: React.FC<Props> = ({ open, onClose, product }) => {
                                 </div>
 
                                 {/* Product Info */}
-                                <div className="product-content w-full lg:w-[90%] px-4 lg:pr-10 lg:pl-4 text-black flex items-center">
-                                    <div>
-                                        <h1 className="text-xl sm:text-2xl font-semibold mb-2">
-                                            {product?.name}
-                                        </h1>
-                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm text-gray-600">
-                                            <span>Brand: <strong className="text-black">{product?.brand}</strong></span>
-                                            <div className="flex items-center text-yellow-500" aria-label="Rating: 5 out of 5">
-                                                <div className="text-yellow-400 text-[16px]">
-                                                    {'★'.repeat(Math.floor(product?.rating || 0))}{'☆'.repeat(5 - Math.floor(product?.rating || 0))}
-                                                </div>
-                                                <span className="text-sm text-gray-500 ml-2">({product?.rating} / 5)</span>
+                                <div className="w-full lg:w-[90%] px-4 lg:pr-10 pl-4  text-black dark:text-white flex items-center transition-colors duration-300">                                    <div>
+                                    <h1 className="text-xl sm:text-2xl font-semibold mb-2">
+                                        {product?.name}
+                                    </h1>
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span>Brand: <strong className="text-black dark:text-white">{product?.brand}</strong></span>
+                                        <div className="flex items-center text-yellow-500" aria-label="Rating: 5 out of 5">
+                                            <div className="text-yellow-400 text-[16px]">
+                                                {'★'.repeat(Math.floor(product?.rating || 0))}{'☆'.repeat(5 - Math.floor(product?.rating || 0))}
                                             </div>
-                                            <span className=" cursor-pointer text-gray-600">Review (10)</span>
+                                            <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">({product?.rating} / 5)</span>
                                         </div>
-                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-gray-400 line-through text-lg">₹{product?.listedPrice}</span>
-                                                <span className="text-red-600 text-lg font-bold">₹{product?.finalPrice}</span>
-                                            </div>
-                                            <div>
-                                                <span>In Stock: <span className="text-green-600 font-bold">{product?.stock || 0} Items</span></span>
-                                            </div>
+                                        <span className=" cursor-pointer text-gray-600 dark:text-white">Review (10)</span>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-gray-400 dark:text-gray-500 line-through text-lg">₹{product?.listedPrice}</span>
+                                            <span className="text-red-600 dark:text-red-400 text-lg font-bold">₹{product?.finalPrice}</span>
                                         </div>
-                                        <p className="mt-4 text-gray-700">
-                                            {product?.shortDescription || "Lorem Ipsum is simply dummy text of the printing and typesetting industry. It has been the industry's standard since the 1500s, when an unknown printer scrambled type to make a specimen book."}
-                                        </p>
-                                        <div className="flex items-center gap-4 mt-5">
-                                            <span className="text-base font-medium">Size:</span>
-                                            <div className="flex gap-2">{
-                                                ["S", "M", "L"].map((button, idx) => (
-                                                    <button key={button} className="px-3 py-1 border rounded hover:bg-gray-100" onClick={() => handleSizeButtonChange(idx)}>{button}</button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <p className="text-md text-gray-800 mt-5 mb-2 flex items-center gap-2">
-                                            <LiaShippingFastSolid className='text-lg' /> <span>Free Shipping (Est. Delivery: 2-3 Days)</span>
-                                        </p>
-                                        <div className="flex items-center gap-4 py-4">
-                                            <div className="w-20 relative">
-                                                <input type="number" className="w-full h-10 pl-3  border rounded focus:outline-none" value={quantity}
-                                                    onChange={(e) => setQuantity(Number(e.target.value))}
-                                                    min={1} />
-                                                <div className="absolute inset-y-0 right-0 flex flex-col justify-between">
-                                                    <button type="button" className="h-5 text-xs text-gray-600 hover:text-black px-2 hover:bg-gray-200 rounded-sm animate-pulse" onClick={handleIncrease}><IoChevronUp className='hover:scale-110 hover:font-bold' /></button>
-                                                    <button type="button" className="h-5 text-xs text-gray-600 hover:text-black px-2 hover:bg-gray-200 rounded-sm" onClick={handleDecrease}><IoChevronDown className='hover:scale-110 hover:font-bold' /></button>
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                onClick={handleAddToCart}
-                                                disabled={addingToCart}
-                                                className="flex items-center gap-2 bg-red-500 hover:bg-black text-white px-6 py-2 rounded transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                                            >
-                                                {addingToCart ? (
-                                                    <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
-                                                ) : addedQty !== null ? (
-                                                    <>Go To Cart ({addedQty})</>
-                                                ) : (
-                                                    <>
-                                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2..." />
-                                                        </svg>
-                                                        Add to Cart
-                                                    </>
-                                                )}
-                                            </button>
-
-                                            {cartSuccess && (
-                                                <p className="text-green-600 text-sm mt-2 animate-fadeIn">
-                                                    ✅ Added to cart successfully
-                                                </p>
-                                            )}
-
-                                        </div>
-                                        <div className="flex flex-col sm:flex-row gap-4 mt-4 text-md font-medium">
-                                            <button className="flex items-center gap-2 text-gray-700 hover:text-red-400 cursor-pointer">
-                                                <FaRegHeart /> Add to Wishlist
-                                            </button>
-                                            {/* <button className="flex items-center gap-2 text-gray-700 hover:text-red-400 cursor-pointer">
-                                                <GoGitCompare /> Add to Compare
-                                            </button> */}
+                                        <div>
+                                            <span>In Stock: <span className="text-green-600 font-bold">{product?.stock || 0} Items</span></span>
                                         </div>
                                     </div>
+                                    <p className="mt-4 text-gray-700 dark:text-gray-300">
+                                        {product?.shortDescription || "Lorem Ipsum is simply dummy text of the printing and typesetting industry. It has been the industry's standard since the 1500s, when an unknown printer scrambled type to make a specimen book."}
+                                    </p>
+                                    <div className="flex items-center gap-4 mt-5">
+                                        <span className="text-base font-medium">Size:</span>
+                                        <div className="flex gap-2">{
+                                            ["S", "M", "L"].map((button, idx) => (
+                                                <button key={button} className="px-3 py-1 border rounded border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition" onClick={() => handleSizeButtonChange(idx)}>{button}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <p className="text-md text-gray-800 dark:text-gray-300 mt-5 mb-2 flex items-center gap-2">
+                                        <LiaShippingFastSolid className='text-lg' /> <span>Free Shipping (Est. Delivery: 2-3 Days)</span>
+                                    </p>
+                                    <div className="flex items-center gap-4 py-4">
+                                        <div className="w-20 relative">
+                                            <input type="number" className="w-full h-10 pl-3 border rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none" value={quantity}
+                                                onChange={(e) => setQuantity(Number(e.target.value))}
+                                                min={1} />
+                                            <div className="absolute inset-y-0 right-0 flex flex-col justify-between">
+                                                <button type="button" className="h-5 text-xs text-gray-600 hover:text-black px-2 hover:bg-gray-200 rounded-sm animate-pulse" onClick={handleIncrease}><IoChevronUp className='hover:scale-110 hover:font-bold' /></button>
+                                                <button type="button" className="h-5 text-xs text-gray-600 hover:text-black px-2 hover:bg-gray-200 rounded-sm" onClick={handleDecrease}><IoChevronDown className='hover:scale-110 hover:font-bold' /></button>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={handleAddToCart}
+                                            disabled={addingToCart}
+                                            className="flex items-center gap-2 bg-red-500 hover:bg-black  dark:hover:bg-red-600 text-white px-6 py-2 rounded transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                            {addingToCart ? (
+                                                <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                                            ) : addedQty !== null ? (
+                                                <>Go To Cart ({addedQty})</>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-5 h-5 dark:text-gray-200" fill="currentColor" viewBox="0 0 24 24">
+                                                        <path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2..." />
+                                                    </svg>
+                                                    Add to Cart
+                                                </>
+                                            )}
+                                        </button>
+
+                                        {cartSuccess && (
+                                            <p className="text-green-600 text-sm mt-2 animate-fadeIn">
+                                                ✅ Added to cart successfully
+                                            </p>
+                                        )}
+
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-4 mt-4 text-md font-medium">
+                                        <button className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-red-400 cursor-pointer">
+                                            <FaRegHeart /> Add to Wishlist
+                                        </button>
+                                        {/* <button className="flex items-center gap-2 text-gray-700 hover:text-red-400 cursor-pointer">
+                                                <GoGitCompare /> Add to Compare
+                                            </button> */}
+                                    </div>
+                                </div>
                                 </div>
                             </div>
                         </section>

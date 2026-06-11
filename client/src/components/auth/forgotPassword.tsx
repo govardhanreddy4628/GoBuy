@@ -66,31 +66,54 @@ const ForgotPassword = () => {
 
     return (
         <section className='w-full container mx-auto px-2'>
-            <div className='bg-white my-4 w-full max-w-lg mx-auto rounded p-7'>
-                <p className='font-semibold text-lg'>Forgot Password </p>
-                <form className='grid gap-4 py-4' onSubmit={handleSubmit}>
-                    <div className='grid gap-1'>
-                        <label htmlFor='email'>Email :</label>
-                        <input
-                            type='email'
-                            id='email'
-                            className='bg-blue-50 p-2 border rounded outline-none focus:border-primary-200'
-                            name='email'
-                            value={data.email}
-                            onChange={handleChange}
-                            placeholder='Enter your email'
-                        />
-                    </div>
-             
-                    <button onClick={() => navigate("/otpverify")} disabled={!valideValue} className={` ${valideValue ? "bg-green-800 hover:bg-green-700" : "bg-gray-500" }    text-white py-2 rounded font-semibold my-3 tracking-wide`}>Send Otp</button>
+  <div className='bg-white dark:bg-gray-900 my-4 w-full max-w-lg mx-auto rounded p-7 shadow-md text-gray-800 dark:text-gray-100'>
+    
+    <p className='font-semibold text-lg'>Forgot Password </p>
 
-                </form>
+    <form className='grid gap-4 py-4' onSubmit={handleSubmit}>
+      
+      <div className='grid gap-1'>
+        <label htmlFor='email' className='text-gray-700 dark:text-gray-300'>
+          Email :
+        </label>
 
-                <p>
-                    Already have account? <Link to={"/login"} className='font-semibold text-green-700 hover:text-green-800'>Login</Link>
-                </p>
-            </div>
-        </section>
+        <input
+          type='email'
+          id='email'
+          className='bg-blue-50 dark:bg-gray-800 p-2 border border-gray-300 dark:border-gray-700 rounded outline-none focus:border-primary-200 dark:focus:border-red-500 text-gray-800 dark:text-gray-100 placeholder-gray-400'
+          name='email'
+          value={data.email}
+          onChange={handleChange}
+          placeholder='Enter your email'
+        />
+      </div>
+
+      <button
+        onClick={() => navigate("/otpverify")}
+        disabled={!valideValue}
+        className={`${
+          valideValue
+            ? "bg-green-800 hover:bg-green-700"
+            : "bg-gray-500 dark:bg-gray-700"
+        } text-white py-2 rounded font-semibold my-3 tracking-wide transition-colors`}
+      >
+        Send Otp
+      </button>
+
+    </form>
+
+    <p className='text-gray-700 dark:text-gray-300'>
+      Already have account?{" "}
+      <Link
+        to={"/login"}
+        className='font-semibold text-green-700 dark:text-green-500 hover:text-green-800 dark:hover:text-green-400'
+      >
+        Login
+      </Link>
+    </p>
+
+  </div>
+</section>
     )
 }
 

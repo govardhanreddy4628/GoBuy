@@ -232,125 +232,127 @@ const Checkout = () => {
   // ================= UI =================
   return (
     <Layout>
-      <div className="container mx-auto py-10">
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">
-                Shipping Address
-              </h2>
-
-              {step === "shipping" && (
-                <>
-                  <SavedAddresses
-                    addresses={savedAddresses}
-                    selectedAddressId={selectedAddressId}
-                    onSelectAddress={(id) => {
-                      const selected = savedAddresses.find(
-                        (a) => a._id === id
-                      );
-                      if (selected) {
-                        setSelectedAddressId(id);
-                        setShippingDetails(selected);
-                      }
-                    }}
-                    onDelete={handleDeleteAddress}
-                    onEdit={handleEditAddress}
-                  />
-
-                  {!showAddressForm && (
-                    <Button
-                      variant="outline"
-                      className="w-full mt-4"
-                      onClick={() => {
-                        setEditingAddress(null);
-                        setShowAddressForm(true);
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add New Address
-                    </Button>
-                  )}
-
-                  {!showAddressForm && shippingDetails && (
-                    <Button
-                      className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white"
-                      onClick={handleContinueToPayment}
-                    >
-                      Continue to Payment
-                    </Button>
-                  )}
-
-                  {showAddressForm && (
-                    <>
-                      <Separator className="my-4" />
-                      <ShippingForm
-                        onSubmit={handleSubmitAddress}
-                        loading={loadingAddress}
-                        onCancel={() => {
-                          setShowAddressForm(false);
-                          setEditingAddress(null);
-                        }}
-                        defaultValues={editingAddress || undefined}
-                        isEdit={!!editingAddress}
-                      />
-                    </>
-                  )}
-                </>
-              )}
-
-              {step === "payment" && shippingDetails && (
-                <div className="space-y-2 text-sm">
-                  <p className="font-medium">{shippingDetails?.fullName}</p>
-                  <p className="text-muted-foreground">{shippingDetails?.email}</p>
-                  <p className="text-muted-foreground">{shippingDetails?.mobile}</p>
-                  <p className="text-muted-foreground">{shippingDetails?.address_line}</p>
-                  <p className="text-muted-foreground">
-                    {shippingDetails?.city}, {shippingDetails?.state} - {shippingDetails?.pincode}
-                  </p>
-                </div>
-              )}
-            </Card>
-
-            {step === "payment" && (
+      <div className="dark:bg-gray-800">
+        <div className="container mx-auto py-10 dark:bg-gray-800">
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
               <Card className="p-6">
-                <h2 className="text-xl font-semibold mb-6">
-                  Select Payment Method
+                <h2 className="text-xl font-semibold mb-4">
+                  Shipping Address
                 </h2>
-                <PaymentMethodSelector
-                  selected={paymentMethod}
-                  onSelect={setPaymentMethod}
-                />
-              </Card>
-            )}
-          </div>
 
-          <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-4">
-              <OrderSummary
-                items={cartItems.map((item) => ({
-                  id: item.product._id,
-                  name: item.product.name,
-                  price: item.product.finalPrice,
-                  quantity: item.quantity,
-                  image: item.product.images?.[0]?.url,
-                }))}
-                subtotal={subtotal}
-                shipping={shipping}
-                //tax={tax}
-                total={total}
-              />
+                {step === "shipping" && (
+                  <>
+                    <SavedAddresses
+                      addresses={savedAddresses}
+                      selectedAddressId={selectedAddressId}
+                      onSelectAddress={(id) => {
+                        const selected = savedAddresses.find(
+                          (a) => a._id === id
+                        );
+                        if (selected) {
+                          setSelectedAddressId(id);
+                          setShippingDetails(selected);
+                        }
+                      }}
+                      onDelete={handleDeleteAddress}
+                      onEdit={handleEditAddress}
+                    />
+
+                    {!showAddressForm && (
+                      <Button
+                        variant="outline"
+                        className="w-full mt-4"
+                        onClick={() => {
+                          setEditingAddress(null);
+                          setShowAddressForm(true);
+                        }}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add New Address
+                      </Button>
+                    )}
+
+                    {!showAddressForm && shippingDetails && (
+                      <Button
+                        className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white"
+                        onClick={handleContinueToPayment}
+                      >
+                        Continue to Payment
+                      </Button>
+                    )}
+
+                    {showAddressForm && (
+                      <>
+                        <Separator className="my-4" />
+                        <ShippingForm
+                          onSubmit={handleSubmitAddress}
+                          loading={loadingAddress}
+                          onCancel={() => {
+                            setShowAddressForm(false);
+                            setEditingAddress(null);
+                          }}
+                          defaultValues={editingAddress || undefined}
+                          isEdit={!!editingAddress}
+                        />
+                      </>
+                    )}
+                  </>
+                )}
+
+                {step === "payment" && shippingDetails && (
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium">{shippingDetails?.fullName}</p>
+                    <p className="text-muted-foreground">{shippingDetails?.email}</p>
+                    <p className="text-muted-foreground">{shippingDetails?.mobile}</p>
+                    <p className="text-muted-foreground">{shippingDetails?.address_line}</p>
+                    <p className="text-muted-foreground">
+                      {shippingDetails?.city}, {shippingDetails?.state} - {shippingDetails?.pincode}
+                    </p>
+                  </div>
+                )}
+              </Card>
 
               {step === "payment" && (
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handlePlaceOrder}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? "Processing..." : `Place Order - ₹${total}`}
-                </Button>
+                <Card className="p-6">
+                  <h2 className="text-xl font-semibold mb-6">
+                    Select Payment Method
+                  </h2>
+                  <PaymentMethodSelector
+                    selected={paymentMethod}
+                    onSelect={setPaymentMethod}
+                  />
+                </Card>
               )}
+            </div>
+
+            <div className="lg:col-span-1">
+              <div className="sticky top-8 space-y-4">
+                <OrderSummary
+                  items={cartItems.map((item) => ({
+                    id: item.product._id,
+                    name: item.product.name,
+                    price: item.product.finalPrice,
+                    quantity: item.quantity,
+                    image: item.product.images?.[0]?.url,
+                  }))}
+                  subtotal={subtotal}
+                  shipping={shipping}
+                  //tax={tax}
+                  total={total}
+                />
+
+                {step === "payment" && (
+                  <Button
+                    className="w-full bg-red-500 hover:bg-red-600"
+                    size="lg"
+                    onClick={handlePlaceOrder}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? "Processing..." : `Place Order - ₹${total}`}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>

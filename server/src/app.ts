@@ -42,6 +42,7 @@ import agentRouter from "./routes/agentRoutes.js";
 import blogRouter from "./routes/blogRoutes.js";
 import { initializeSockets } from "./sockets/index.js";
 import { inngestHandler } from "./inngest/handler.js";
+import logoRouter from "./routes/logoRoutes.js";
 //import authRoutes from "./routes/authRoutes.js"
 
 const app = express();
@@ -149,6 +150,7 @@ app.use("/api/v1/analytics", analyticsRouter)
 app.use("/api/v1/searchbar", searchRouter)
 // app.use("/api/v1/event", eventRoutes);
 app.use("/api/v1/blogs", blogRouter);
+app.use("/api/v1/logos", logoRouter);
 
 app.use("/api/v1/agents", agentRouter);
 //app.post("/assistant/query", handleQuery);

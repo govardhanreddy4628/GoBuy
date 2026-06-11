@@ -63,13 +63,12 @@ const Footer = () => {
 
         <Divider className='dark:!bg-gray-300 !w-[95%] !mx-auto' />
 
-        <div className='flex justify-start gap-4 w-[95%] mx-auto py-10'>
-
-          <div className='flex flex-col gap-4 w-[30%]'>
+        <div className='flex flex-col lg:flex-row justify-start gap-4 w-[95%] mx-auto py-10'>
+          <div className='flex flex-col gap-2 lg:w-[30%]'>
             <h3 className='text-[24px]'>Contact us</h3>
-            <p className='text-gray-600'>Classyshop - Mega Super Store
-              507-Union Trade Centre France</p>
-            <h1 className='text-red-500 text-[30px]'>(+91) 9876-543-210</h1>
+            <p className='text-gray-600 dark:text-gray-400'>Go Buy - Mega Super Store
+              507-Union Trade Centre Hyderabad</p>
+            <h1 className='text-red-500 text-[26px]'>(+91) 9876-543-210</h1>
             <div className='flex gap-4 items-center'>
               <IoChatboxOutline className='text-[30px] text-red-500' />
               <h3>Online Chat Get Expert Help</h3>
@@ -79,9 +78,8 @@ const Footer = () => {
 
           <div className="w-[1px] bg-gray-300 mx-4"></div>
 
-
-          <div className='flex  justify-between w-[70%]'>
-            <div className='flex flex-col gap-4'>
+          <div className='flex flex-col lg:flex-row gap-6 justify-between lg:w-[70%]'>
+            <div className='flex flex-col gap-3'>
               <h1 className='text-[24px]'>Products</h1>
               <ul className='flex flex-col gap-2'>
                 <li className='text-gray-600 dark:text-gray-400'>Price drop</li>
@@ -90,10 +88,9 @@ const Footer = () => {
                 <li className='text-gray-600 dark:text-gray-400'>Contact us</li>
                 <li className='text-gray-600 dark:text-gray-400'>Site map</li>
                 <li className='text-gray-600 dark:text-gray-400'>Stores</li>
-
               </ul>
             </div>
-            <div className='flex flex-col gap-4'>
+            <div className='flex flex-col gap-3'>
               <h1 className='text-[24px]'>Our Company</h1>
               <ul className='flex gap-2 flex-col'>
                 <li className='text-gray-600 dark:text-gray-400'>Delivery</li>
@@ -104,16 +101,42 @@ const Footer = () => {
                 <li className='text-gray-600 dark:text-gray-400'>Login</li>
               </ul>
             </div>
-            <div className='max-w-96 flex flex-col gap-5'>
+            
+            <div className='max-w-96 flex flex-col gap-4'>
               <h1 className='text-[24px]'>Subscribe To Newsletter</h1>
-              <p className='text-gray-600'>Subscribe to our latest newsletter to get news about special discounts.</p>
-              <TextField variant="outlined" type="text" placeholder="enter your email"></TextField>
-              <Button variant="contained" sx={{ width: 160 }} className='!bg-red-500'>SUBSCRIBE</Button>
+              <p className='text-gray-600 dark:text-gray-400'>Subscribe to our latest newsletter to get news about special discounts.</p>
+              <TextField
+                variant="outlined"
+                fullWidth
+                placeholder="Enter your email"
+                size="small"
+                InputProps={{
+                  className:
+                    "bg-white dark:bg-gray-900 text-black dark:text-white rounded-md",
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#d1d5db",
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#ef4444",
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#ef4444",
+                  },
+                }}
+              />              <Button variant="contained" sx={{ width: 160 }} className='!bg-red-500'>SUBSCRIBE</Button>
               <FormControlLabel
+                className="text-gray-600 dark:text-gray-400"
                 control={
                   <Checkbox
-                    color="primary"
                     size="small"
+                    sx={{
+                      color: "#9ca3af",
+                      "&.Mui-checked": {
+                        color: "#ef4444",
+                      },
+                    }}
                   />
                 }
                 label="Accept Terms and Conditions"
@@ -122,7 +145,6 @@ const Footer = () => {
           </div>
         </div>
       </div>
-
 
 
       <Box
@@ -149,15 +171,11 @@ const Footer = () => {
             ))}
           </ButtonGroup>
           <Typography variant="body2" color="textSecondary" className='text-gray-700 dark:text-gray-200'>
-            © {new Date().getFullYear()} Your Company Name. All rights reserved.
+            © {new Date().getFullYear()} Go Buy. All rights reserved.
           </Typography>
         </Box>
       </Box>
-
-
-
     </>
-
   )
 }
 

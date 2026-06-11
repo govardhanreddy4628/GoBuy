@@ -37,41 +37,61 @@ export const PaymentMethodSelector = ({
 }: PaymentMethodSelectorProps) => {
   return (
     <RadioGroup
-      value={selected}
-      onValueChange={(value) => onSelect(value as PaymentMethod)}
-    >
-      <div className="space-y-3">
-        {PAYMENT_OPTIONS.map((option) => {
-          const Icon = option.icon;
-          const isSelected = selected === option.value;
+  value={selected}
+  onValueChange={(value) => onSelect(value as PaymentMethod)}
+>
+  <div className="space-y-3">
+    {PAYMENT_OPTIONS.map((option) => {
+      const Icon = option.icon;
+      const isSelected = selected === option.value;
 
-          return (
-            <Card
-              key={option.value}
-              className={`p-4 cursor-pointer transition-colors ${isSelected ? "border-primary bg-accent" : ""
-                }`}
+      return (
+        <Card
+          key={option.value}
+          className={`p-4 cursor-pointer transition-all border
+          bg-white dark:bg-gray-900
+          border-gray-200 dark:border-gray-700
+          ${
+            isSelected
+              ? "border-red-500 bg-red-50 dark:bg-red-950/30"
+              : "hover:shadow-sm"
+          }`}
+        >
+          <div className="flex items-center space-x-3">
+            
+            {/* ✅ RED RADIO */}
+            <RadioGroupItem
+              value={option.value}
+              id={option.value}
+              className="
+                border-gray-500 dark:border-gray-400
+                text-red-500
+                data-[state=checked]:border-red-500
+                data-[state=checked]:bg-red-500
+                data-[state=checked]:text-white
+              "
+            />
+
+            <Label
+              htmlFor={option.value}
+              className="flex items-center gap-3 cursor-pointer flex-1"
             >
-              <div className="flex items-center space-x-3">
-                <RadioGroupItem value={option.value} id={option.value} />
+              <Icon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
 
-                <Label
-                  htmlFor={option.value}
-                  className="flex items-center gap-3 cursor-pointer flex-1"
-                >
-                  <Icon className="h-5 w-5 text-muted-foreground" />
-
-                  <div>
-                    <p className="font-medium">{option.label}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {option.description}
-                    </p>
-                  </div>
-                </Label>
+              <div>
+                <p className="font-medium text-gray-900 dark:text-gray-100">
+                  {option.label}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {option.description}
+                </p>
               </div>
-            </Card>
-          );
-        })}
-      </div>
-    </RadioGroup>
+            </Label>
+          </div>
+        </Card>
+      );
+    })}
+  </div>
+</RadioGroup>
   );
 };

@@ -5,10 +5,7 @@ import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { PUT } from "../api/api_utility";
 
 
-/* ===========================
-   TYPES
-=========================== */
-
+/* =========================== TYPES =========================== */
 interface Review {
   _id: string;
   user: { name: string; avatar?: string };
@@ -29,7 +26,9 @@ const StarRating: React.FC<{ rating: number }> = ({ rating }) => (
         key={i}
         viewBox="0 0 24 24"
         fill={i < rating ? "gold" : "none"}
-        className={`w-4 h-4 ${i < rating ? "text-yellow-400" : "text-gray-300"
+        className={`w-4 h-4 ${i < rating
+            ? "text-yellow-400"
+            : "text-gray-300 dark:text-gray-600"
           }`}
       >
         <path d="M12 2l3 7h7l-5.5 4.2L18 21l-6-4-6 4 1.5-7.8L2 9h7z" />
@@ -44,31 +43,37 @@ const ReviewCard: React.FC<{
   onVote: (id: string, vote: "up" | "down") => void;
 }> = ({ review, onVote }) => {
   return (
-    <div className="bg-white p-4 rounded-lg shadow border hover:shadow-md transition">
+    <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow border dark:border-gray-700 hover:shadow-md transition">
+
+      {/* User Info */}
       <div className="flex items-center gap-3 mb-2">
         <img
           src={review.user.avatar || "/default-avatar.png"}
           alt={review.user.name}
-          className="w-12 h-12 rounded-full object-cover border"
+          className="w-12 h-12 rounded-full object-cover border dark:border-gray-600"
         />
         <div>
-          <h4 className="font-semibold text-sm flex items-center gap-2">
+          <h4 className="font-semibold text-sm flex items-center gap-2 text-gray-900 dark:text-gray-100">
             {review.user.name}
             {review.verifiedPurchase && (
-              <span className="text-green-600 text-xs font-semibold">
+              <span className="text-green-600 dark:text-green-400 text-xs font-semibold">
                 ✔ Verified
               </span>
             )}
           </h4>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
             {new Date(review.createdAt).toLocaleDateString()}
           </span>
         </div>
       </div>
 
+      {/* Rating */}
       <StarRating rating={review.rating} />
 
-      <p className="text-sm text-gray-700 mt-2">{review.comment}</p>
+      {/* Comment */}
+      <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+        {review.comment}
+      </p>
 
       {/* Images */}
       {review.media && review.media.length > 0 && (
@@ -89,7 +94,7 @@ const ReviewCard: React.FC<{
 
         <button
           onClick={() => onVote(review._id, "up")}
-          className="flex items-center gap-1 text-green-600 hover:scale-105 transition"
+          className="flex items-center gap-1 text-green-600 dark:text-green-400 hover:scale-105 transition"
         >
           <ThumbsUp size={18} />
           {review.upvotes}
@@ -97,7 +102,7 @@ const ReviewCard: React.FC<{
 
         <button
           onClick={() => onVote(review._id, "down")}
-          className="flex items-center gap-1 text-red-600 hover:scale-105 transition"
+          className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:scale-105 transition"
         >
           <ThumbsDown size={18} />
           {review.downvotes}
@@ -109,10 +114,7 @@ const ReviewCard: React.FC<{
 };
 
 
-/* ===========================
-   MAIN COMPONENT
-=========================== */
-
+/* ================MAIN COMPONENT ============== */
 const ReviewList: React.FC<{ productId: string }> = ({ productId }) => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [gridView, setGridView] = useState(false);
@@ -120,10 +122,7 @@ const ReviewList: React.FC<{ productId: string }> = ({ productId }) => {
   const [sort, setSort] = useState("latest");
   const [loading, setLoading] = useState(false);
 
-  /* ===========================
-     FETCH REVIEWS
-  =========================== */
-
+  /* ============== FETCH REVIEWS =============== */
   const fetchReviews = async () => {
     try {
       setLoading(true);
@@ -231,10 +230,15 @@ const ReviewList: React.FC<{ productId: string }> = ({ productId }) => {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto py-4 px-6 bg-white">
+    <div className="w-full max-w-5xl mx-auto py-4 px-6 bg-white dark:bg-gray-900 transition-colors">
+     
+     <h2 className="text-xl font-semibold text-green-800 dark:text-green-400 border-l-4 border-green-800 dark:border-green-400 pl-2 mb-4">
+      Customers say
+    </h2>
 
       {/* Top Controls */}
       <div className="flex justify-between items-center mb-4">
+
         {/* Sort */}
         <select
           value={sort}
@@ -242,7 +246,7 @@ const ReviewList: React.FC<{ productId: string }> = ({ productId }) => {
             setPage(1);
             setSort(e.target.value);
           }}
-          className="border p-2 rounded"
+          className="border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 p-2 rounded focus:outline-none"
         >
           <option value="recent">Recent</option>
           <option value="helpful">Most Helpful</option>
@@ -251,9 +255,9 @@ const ReviewList: React.FC<{ productId: string }> = ({ productId }) => {
         {/* Grid Toggle */}
         <button
           onClick={() => setGridView(!gridView)}
-          className="p-2 shadow rounded"
+          className="p-2 shadow rounded bg-gray-100 dark:bg-gray-800 hover:scale-105 transition"
         >
-          <Grid size={18} />
+          <Grid size={18} className="text-gray-800 dark:text-gray-200" />
         </button>
       </div>
 
@@ -278,7 +282,7 @@ const ReviewList: React.FC<{ productId: string }> = ({ productId }) => {
       <div className="text-center mt-4">
         <button
           onClick={() => setPage((p) => p + 1)}
-          className="px-4 py-2 bg-gray-200 rounded"
+          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:scale-105 transition"
         >
           {loading ? "Loading..." : "Load More"}
         </button>

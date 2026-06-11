@@ -16,7 +16,7 @@ blogRouter.post("/", (req:Request, _res, next) => {
 }, uploadSingle, createBlog);
 blogRouter.get("/", getBlogs);
 blogRouter.get("/:id", asyncHandler(getBlogById));
-blogRouter.put("/:id", asyncHandler(updateBlog));
+blogRouter.put("/:id", uploadSingle, asyncHandler(updateBlog));
 blogRouter.delete("/:id", asyncHandler(deleteBlog));
 
 export default blogRouter;

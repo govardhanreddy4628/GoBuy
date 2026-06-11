@@ -126,9 +126,10 @@ export function initAdminChat(io: Namespace) {
 
         // CREATE MESSAGE
         let newMessage = await Message.create({
-          content: message.trim(),
+          text: message.trim(), // ✅ FIXED
           sender: user._id,
           chat: chat._id,
+          type: "text",
         });
 
         newMessage = await newMessage.populate("sender", "fullName avatar");
