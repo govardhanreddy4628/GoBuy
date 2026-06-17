@@ -18,7 +18,7 @@ interface DecodedToken {
 export const authenticate = (roles?: string[]): RequestHandler => {
   return async (req, res, next) => {
     try {
-      console.log(req.cookies);
+      //console.log(req.cookies);
       const accessToken =
         req.cookies?.access_token ||
         req.cookies?.accessToken ||

@@ -49,7 +49,8 @@ const Footer = () => {
   //   () => { console.log("no location") })
   return (
     <>
-      <Divider className='dark:!bg-gray-400 !mx-auto shadow-lg w-full' />      <div className='dark:bg-gray-800'>
+      <Divider className='dark:!bg-gray-400 !mx-auto shadow-lg w-full' />      
+      <div className='dark:bg-gray-800'>
         <div className="flex flex-wrap justify-center gap-16 py-12">
           {serviceItems.map(({ Icon, title, description }, index) => (
             <div key={index} className="flex flex-col items-center text-center gap-3 max-w-[250px] group">

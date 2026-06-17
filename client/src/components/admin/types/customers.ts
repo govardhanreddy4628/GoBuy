@@ -11,4 +11,5 @@ export type Customer = {
     lastOrder?: string | null;
     status: "Active" | "Inactive";
     role: "USER";
+    createdAt: string;
 };

@@ -30,7 +30,7 @@ type CartContextType = {
   getCartCount: number;
   mergeCartOnLogin: () => Promise<void>;
   loadingCartItems: { [productId: string]: boolean };
-  getCartKey : (productId: string, size?: string, color?: string) => string;
+  getCartKey: (productId: string, size?: string, color?: string) => string;
 };
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -91,7 +91,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       if (!stored) return;
 
       const guestCart = Object.entries(JSON.parse(stored)).map(
-         ([key, item]: any) => {
+        ([key, item]: any) => {
           const [productId, size, color] = key.split("_");
 
           return {
@@ -182,8 +182,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       await fetchCartFromBackend();
     } catch (err) {
       console.error("update failed", err);
-    } finally{
-setLoadingCartItems((prev)=> ({...prev, [key]: false}))
+    } finally {
+      setLoadingCartItems((prev) => ({ ...prev, [key]: false }))
     }
   };
 
@@ -222,7 +222,7 @@ setLoadingCartItems((prev)=> ({...prev, [key]: false}))
         getCartCount,
         mergeCartOnLogin,
         loadingCartItems,
-        getCartKey 
+        getCartKey
       }}
     >
       {children}

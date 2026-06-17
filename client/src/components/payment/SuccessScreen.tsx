@@ -15,9 +15,9 @@ const SuccessScreen = ({ amount, merchantName, orderId, onDone, bank }: Props) =
   const formattedAmount = amount.toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
   return (
-    <div className="flex flex-col h-full min-h-[700px]">
+    <div className="flex flex-col h-full">
       <div className="bg-phonepe-success-bg px-4 py-3 flex items-center gap-3">
-        <span className="text-primary-foreground font-semibold text-base">Payment Successful</span>
+        <span className="dark:text-white font-semibold text-base">Payment Successful</span>
       </div>
 
       <div className="flex-1 flex flex-col items-center px-5">
@@ -25,7 +25,7 @@ const SuccessScreen = ({ amount, merchantName, orderId, onDone, bank }: Props) =
           <div className="absolute inset-0 rounded-full bg-phonepe-success/20 animate-pulse-ring" />
           <div className="absolute inset-0 rounded-full bg-phonepe-success flex items-center justify-center">
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-              <path d="M10 20L17 27L30 13" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="animate-check-draw" />
+              <path d="M10 20L17 27L30 13" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="animate-check-draw !text-gray-900" />
             </svg>
           </div>
         </div>

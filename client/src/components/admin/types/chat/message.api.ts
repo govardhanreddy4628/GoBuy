@@ -1,6 +1,6 @@
 export interface MessageFromApi {
-  id: string;
-  chatID?: string;
+  _id: string;
+  chatId?: string;
   sender:  { _id: string; fullName: string; avatar?: string };
   type: "text" | "image" | "video" | "audio" | "document" | "location" | "contact" | "sticker"| "system" | "call";
   text?: string;
@@ -9,8 +9,9 @@ export interface MessageFromApi {
     mimeType?: string;
     thumbnail?: string;
   };
-  createdAt: string;
   status?: "sent" | "delivered" | "read" | "failed";
   replyTo?: string;
   isDeleted?: boolean;
+  readBy:{userId:string; at:Date}[]
+  createdAt: string;
 }

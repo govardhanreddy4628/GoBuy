@@ -18,15 +18,11 @@ import { accountMenu } from '../data/accountMenu';
 import { useCart } from '../context/cartContext';
 import { useWishlist } from '../context/wishlistContext'; // ✅ new
 import { useCategories } from './admin/context/categoryContext';
-import { IoSearch } from "react-icons/io5";
 import { TypeAnimation } from 'react-type-animation';
-import { FaArrowLeft } from "react-icons/fa";
-import Search from './search';
-import SmartSearch from './smartSearch';
 import SearchBar from './smartSearch';
-import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import { GET } from '../api/api_utility';
 import { FaUserCircle } from "react-icons/fa";
+
 
 const HIDDEN_SLUGS = ["miscellaneous"];
 interface Category {
@@ -40,7 +36,6 @@ interface Category {
 
 
 const Header = () => {
-    const [searchValue, setSearchValue] = useState("");
     const [isFocused, setIsFocused] = useState(false);
     const [open, setOpen] = useState(false);
     const [anchor, setAnchor] = useState<'left' | 'right'>('left');
@@ -48,19 +43,18 @@ const Header = () => {
     const [loginHover, setLoginHover] = useState(false);
     const [logo, setLogo] = useState("");
     const [openSearch, setOpenSearch] = useState(false);
-
-
+    
+    
     const { getCartCount } = useCart();
     const { wishlist } = useWishlist(); // assuming your context exposes `wishlist` array
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
 
     const { categories, loading } = useCategories();
 
     const visibleCategories = categories.filter(
         (cat) => cat.isActive && !HIDDEN_SLUGS.includes(cat.slug) && !cat.parentCategoryId
     ) ?? [];
-
-    const navigate = useNavigate();
 
 
     const userMenuOpen = Boolean(accanchorEl);
@@ -118,7 +112,7 @@ const Header = () => {
         <div className='relative'>
             {/* Top Header */}
             {isHome &&
-                <section className="row1 hidden lg:block max-w-8xl bg-foreground text-muted px-4 py-3 border-b border-border border-solid">
+                <section className="row1 hidden lg:block max-w-8xl bg-gray-600 dark:bg-gray-400 text-muted px-4 py-3 border-b border-border border-solid">
                     <div className="flex flex-col sm:flex-row items-center justify-between lg:w-[95%] w-full mx-auto">
                         <p className="text-sm font-medium">
                             Get up to 50% off new season styles, limited time only
@@ -144,11 +138,13 @@ const Header = () => {
             <section className='row2 bg-background border-b border-b-border border-solid'>
                 <div className='flex justify-between items-center p-1.5 w-[95%] mx-auto '>
                     {/* ✅ LOGO */}
-                    <div className='flex items-center min-w-[380px]'>
+                    <div className='flex items-center min-w-[380px] cursor-pointer hover:opacity-80 transition'>
                         {logo && (
                             <img
                                 src={logo}
+                                onClick={() => navigate("/")}
                                 className="h-10 sm:h-12 lg:h-14 w-auto object-contain"
+                                alt="logo"
                             />
                         )}
                     </div>
@@ -224,7 +220,7 @@ const Header = () => {
                             </IconButton>
 
                             <IconButton aria-label="favorite" className="!p-2">
-                                <Link to="/wishlist" className="flex items-center justify-center">
+                                <Link to={!user? "login" : "myaccount/wishlist"} className="flex items-center justify-center">
                                     <Badge badgeContent={wishlist.length || 0} color="warning">
                                         <FavoriteBorderIcon className="!w-5 lg:!w-6 !h-5 lg:!h-6 text-muted-foreground dark:text-gray-300" />
                                     </Badge>

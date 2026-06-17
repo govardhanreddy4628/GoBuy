@@ -4,12 +4,12 @@ import { Customer } from "./customersData"; // ✅ Adjust the import path if nee
 
 interface AddCustomerButtonProps {
   setShowModal: (show: boolean) => void;
-  setActionType: (type: 'add' | 'edit' | 'view') => void;
+  setActionType: (type: 'add' | 'edit' | 'view' | null) => void;
   setSelectedCustomer: (customer: Customer | null) => void;
 }
 
-const AddCustomerButton: React.FC<AddCustomerButtonProps> = ({setShowModal, setActionType, setSelectedCustomer}) => {
-  
+const AddCustomerButton: React.FC<AddCustomerButtonProps> = ({ setShowModal, setActionType, setSelectedCustomer }) => {
+
   const handleAddCustomer = () => {
     setActionType('add');
     setSelectedCustomer(null);

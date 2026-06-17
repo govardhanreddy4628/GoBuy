@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { customersData } from './customersData';
 import Actions from './Actions';
 import ActionModal from './ActionModal';
 import AddCustomerButton from './AddCustomerButton';
@@ -8,13 +7,11 @@ import BulkDelete from '../table/BulkDelete';
 import BulkExport from '../table/BulkExport';
 import RowsPerPage from '../table/RowsPerPage';
 // import Table from './table';
-import DataTable, { Column } from "./DataTable";
+import DataTable, { Column } from "./dataTable";
 import { useCustomers } from '../context/customerContext';
 import { formatDate } from '../utils/formatDate';
 import { Customer } from '../types/customers';
 //import useDebouncedValue from "../table/useDebouncedSearch";
-
-
 
 const CustomersTable: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -28,8 +25,7 @@ const CustomersTable: React.FC = () => {
     const [selectedCustomerForAction, setSelectedCustomerForAction] = useState<Customer | null>(null);
     const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
     const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
-    const { customers, loading, addCustomer, updateCustomer } = useCustomers();
-
+    const { customers, loading, addCustomer, updateCustomer, fetchCustomers } = useCustomers();
 
     // const debouncedSearch = useDebouncedValue(searchTerm, 300);
 
@@ -99,17 +95,6 @@ const CustomersTable: React.FC = () => {
         });
     }, [filteredCustomers, sortField, sortAsc]);
 
-
-
-    // const toggleSort = (field: keyof Customer) => {
-    //     if (sortField === field) {
-    //         setSortAsc(!sortAsc);
-    //     } else {
-    //         setSortField(field);
-    //         setSortAsc(true);
-    //     }
-    // };
-
     const toggleSort = (field: keyof Customer) => {
         if (sortField === field) {
             if (sortAsc) {
@@ -146,38 +131,37 @@ const CustomersTable: React.FC = () => {
 
 
     // Select/deselect individual row on click or Select/deselect multiple rows on click with shift 
-    // const handleSelectRow = (
-    //     id: Customer["id"],
-    //     index: number,
-    //     shiftKey: boolean,
-    //     checked: boolean
-    // ) => {
-    //     if (shiftKey && lastClickedIndex !== null) {
-    //         // Range boundaries
-    //         const start = Math.min(lastClickedIndex, index);
-    //         const end = Math.max(lastClickedIndex, index);
-    //         const idsInRange = customersData.slice(start, end + 1).map((c) => c.id);
+    const handleSelectRow = (
+        id: Customer["id"],
+        index: number,
+        shiftKey: boolean,
+        checked: boolean
+    ) => {
+        if (shiftKey && lastClickedIndex !== null) {
+            const start = Math.min(lastClickedIndex, index);
+            const end = Math.max(lastClickedIndex, index);
 
-    //         setSelected((prev) => {
-    //             if (checked) {
-    //                 // ✅ Add whole range
-    //                 const newSelection = new Set(prev);
-    //                 idsInRange.forEach((rowId) => newSelection.add(rowId));
-    //                 return Array.from(newSelection);
-    //             } else {
-    //                 // ❌ Remove whole range
-    //                 return prev.filter((rowId) => !idsInRange.includes(rowId));
-    //             }
-    //         });
-    //     } else {
-    //         // Normal single toggle
-    //         setSelected((prev) =>
-    //             checked ? [...prev, id] : prev.filter((i) => i !== id)
-    //         );
-    //         setLastClickedIndex(index);
-    //     }
-    // };
+            const idsInRange = pagedData
+                .slice(start, end + 1)
+                .map((c) => c.id);
 
+            setSelected((prev) => {
+                if (checked) {
+                    return Array.from(new Set([...prev, ...idsInRange]));
+                }
+                return prev.filter((rowId) => !idsInRange.includes(rowId));
+            });
+        } else {
+            setSelected((prev) => {
+                if (checked) {
+                    return prev.includes(id) ? prev : [...prev, id];
+                }
+                return prev.filter((i) => i !== id);
+            });
+        }
+
+        setLastClickedIndex(index); // ✅ ALWAYS update
+    };
 
     const highlightMatch = (text: string, query: string) => {
         if (!query) return text;
@@ -214,14 +198,14 @@ const CustomersTable: React.FC = () => {
                 <input
                     type="checkbox"
                     checked={selected.includes(cust.id)}
-                    // onChange={(e) =>
-                    //     handleSelectRow(
-                    //         cust.id,
-                    //         idx,
-                    //         (e.nativeEvent as MouseEvent).shiftKey,
-                    //         e.target.checked
-                    //     )
-                    // }
+                    onClick={(e) =>
+                        handleSelectRow(
+                            cust.id,
+                            idx,
+                            (e as React.MouseEvent<HTMLInputElement>).shiftKey,
+                            (e.target as HTMLInputElement).checked
+                        )
+                    }
                     aria-label={`Select customer ${cust.name}`}
                 />
             ),
@@ -248,10 +232,9 @@ const CustomersTable: React.FC = () => {
         },
         { accessor: "email", label: "Email", render: (cust) => highlightMatch(cust.email, searchTerm) },
         { accessor: "phone", label: "Phone", render: (cust) => highlightMatch(String(cust.phone ?? ""), searchTerm), cellStyles: "whitespace-nowrap text-sm" },
-        { accessor: "address", label: "Address", render: (cust) => <div className="text-gray-700 dark:text-gray-300 max-w-[220px] min-w-[150px] line-clamp-2 text-xs">{highlightMatch(cust.address, searchTerm)}</div> },
         { accessor: "joined", label: "Joined", render: (cust) => highlightMatch(formatDate(cust.joined), searchTerm), cellStyles: "text-nowrap min-w-36" },
         { accessor: "orders", label: "Orders", sortable: true, render: (cust) => cust.orders, cellStyles: "text-nowrap min-w-24", },
-        { accessor: "totalSpend", label: "Total Spend", sortable: true, render: (cust) => `₹${cust.totalSpend.toFixed(2)}`, cellStyles: "text-nowrap min-w-36", },
+        { accessor: "totalSpend", label: "Total Spend", sortable: true, render: (cust) => `₹${cust.totalSpend?.toFixed(2)}`, cellStyles: "text-nowrap min-w-36", },
         { accessor: "lastOrder", label: "Last Order", render: (cust) => formatDate(cust.lastOrder), cellStyles: "text-nowrap min-w-24", },
         {
             accessor: "status",
@@ -276,6 +259,7 @@ const CustomersTable: React.FC = () => {
                     setActionType={setActionType}
                     setSelectedCustomer={setSelectedCustomerForAction}
                     setShowModal={setShowModal}
+                    onDeleted={fetchCustomers}
                 />
             ),
         },
@@ -315,11 +299,10 @@ const CustomersTable: React.FC = () => {
                 toggleSort={toggleSort}
                 sortField={sortField}
                 sortAsc={sortAsc}
-
             />
 
             {/* Modal with Form */}
-            {/* <ActionModal actionType={actionType} showModal={showModal} setShowModal={setShowModal} selectedCustomer={selectedCustomerForAction} handleFormSubmit={handleFormSubmit} /> */}
+            <ActionModal actionType={actionType} showModal={showModal} setShowModal={setShowModal} selectedCustomer={selectedCustomerForAction} handleFormSubmit={handleFormSubmit} />
 
             {rowsPerPage !== -1 && (
                 <div className="flex justify-between items-center mt-4 text-gray-700 dark:text-gray-300">

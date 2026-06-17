@@ -1,14 +1,15 @@
 import { MdDeleteOutline, MdOutlineEdit } from "react-icons/md";
 import { LuEye } from "react-icons/lu";
-import { Customer } from "./customersData"; // ✅ Adjust path as needed
 import React from "react";
 import DeleteDialog from "../table/DeleteDialog";
+import { Customer } from "../types/customers";
 
 interface ActionsProps {
   cust: Customer;
-  setActionType: (type: 'view' | 'edit' | 'add') => void;
+  setActionType: (type: 'add' | 'edit' | 'view' | null) => void;
   setShowModal: (show: boolean) => void;
   setSelectedCustomer: (customer: Customer) => void;
+  onDeleted?: () => void;
 }
 
 const Actions: React.FC<ActionsProps> = ({
@@ -16,6 +17,7 @@ const Actions: React.FC<ActionsProps> = ({
   setActionType,
   setShowModal,
   setSelectedCustomer,
+  onDeleted
 }) => {
   const handleViewProfile = () => {
     setActionType("view");
@@ -28,8 +30,6 @@ const Actions: React.FC<ActionsProps> = ({
     setSelectedCustomer(cust);
     setShowModal(true);
   };
-
-  
 
   return (
     <div className="flex space-x-3 items-center">
@@ -51,10 +51,9 @@ const Actions: React.FC<ActionsProps> = ({
         <MdOutlineEdit className="h-5 w-5" />
       </button>
 
-
       <DeleteDialog
         selectedIds={[cust.id]}
-        deleteUrl="/api/customers/delete"
+        onDeleted={onDeleted} // ✅ quick fix
         resourceName="customer"
         trigger={
           <button

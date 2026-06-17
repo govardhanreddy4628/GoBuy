@@ -10,27 +10,23 @@ const EVENTS = {
   START_TYPING: "START_TYPING",
   STOP_TYPING: "STOP_TYPING",
 };
-
-type MessagePayload =
-  | { type: "text"; content: string }
-  | { type: "file"; content: string; fileName?: string }
-  | { type: "audio"; content: string };
-
 interface ChatInputProps {
-  onSendMessage: (message: MessagePayload) => void;
+  onSendMessage: (data: { text?: string; file?: File | null }) => void;
   socketRef: React.MutableRefObject<Socket | null>;
   selectedChatId?: string;
   disabled?: boolean;
 }
 
 export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled = false }: ChatInputProps) {
-  const [message, setMessage] = useState("");
+  const [inputText, setInputText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [recording, setRecording] = useState(false);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   //   // ✅ FIX: move socket listeners into useEffect
   useEffect(() => {
@@ -43,64 +39,58 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
     socketRef.current.on(EVENTS.STOP_TYPING, handleStopTyping);
 
     return () => {
-      socketRef.current.off(EVENTS.START_TYPING, handleStartTyping);
-      socketRef.current.off(EVENTS.STOP_TYPING, handleStopTyping);
+      socketRef.current?.off(EVENTS.START_TYPING, handleStartTyping);
+      socketRef.current?.off(EVENTS.STOP_TYPING, handleStopTyping);
     };
   }, [socketRef]);
 
 
-  const dispatch = useDispatch();
+  //const dispatch = useDispatch();
 
   const handleTyping = () => {
     if (!socketRef?.current || !selectedChatId) return;
 
-    socketRef.current.emit(EVENTS.START_TYPING, {
-      chatId: selectedChatId,
-    });
+    socketRef.current.emit(EVENTS.START_TYPING, { chatId: selectedChatId });
 
-    setTimeout(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
       socketRef.current?.emit(EVENTS.STOP_TYPING, {
         chatId: selectedChatId,
       });
     }, 1500);
   };
 
+  // ✅ SEND HANDLER
   const handleSend = () => {
-    if (!message.trim() || disabled) return;
+    if (!inputText.trim() && !file) return;
 
     onSendMessage({
-      type: "text",
-      content: message.trim(),
+      text: inputText.trim() || undefined,
+      file: file || null,
     });
 
-    setMessage("");
+    setInputText("");
+    setFile(null);
     setShowEmoji(false);
   };
 
   const handleEmojiClick = (emojiData: any) => {
-    setMessage((prev) => prev + emojiData.emoji);
+    setInputText((prev) => prev + emojiData.emoji);
   };
 
-  const handleFileUpload = async (file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      onSendMessage({
-        type: "file",
-        content: data.url,
-        fileName: file.name,
-      });
-    } catch (err) {
-      console.error("File upload failed", err);
+  // file select
+  const handleFileChange = (e: any) => {
+    if (e.target.files?.[0]) {
+      setFile(e.target.files[0]);
     }
+  };
+
+  // open file picker
+  const handleFileOpen = () => {
+    fileRef.current?.click();
   };
 
   // =========================
@@ -123,7 +113,7 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
         const blob = new Blob(chunks, { type: "audio/webm" });
         const file = new File([blob], "voice.webm");
 
-        await handleFileUpload(file);
+        setFile(file);
       };
 
       recorder.start();
@@ -146,10 +136,10 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
     }
   };
 
-  const handleFileOpen = (e) => {
-    // dispatch(setIsFileMenu(true));
-    // setFileMenuAnchor(e.currentTarget);
-  };
+  // const handleFileOpen = (e) => {
+  //   // dispatch(setIsFileMenu(true));
+  //   // setFileMenuAnchor(e.currentTarget);
+  // };
 
   return (
     <div className="p-4 border-t border-border bg-chat-input relative">
@@ -160,6 +150,13 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
         </div>
       )}
       <div className="flex items-end gap-3">
+        {/* hidden file input */}
+        <input
+          type="file"
+          ref={fileRef}
+          hidden
+          onChange={handleFileChange}
+        />
         {/* Attachment button */}
         <Button variant="ghost" size="sm" disabled={disabled} onClick={handleFileOpen}>
           <Paperclip className="h-4 w-4" />
@@ -169,12 +166,12 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
         <div className="flex-1 relative">
           <Input
             placeholder="Type a message..."
-            value={message}
+            value={inputText}
             onChange={(e) => {
-              setMessage(e.target.value)
+              setInputText(e.target.value)
               handleTyping();  // ✅ trigger typing
             }}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             disabled={disabled}
             className="pr-10 bg-background border-border resize-none"
           />
@@ -189,8 +186,8 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
           </Button>
         </div>
 
-  
-        {message.trim() ? (
+
+        {inputText.trim() || file ? (
           <Button
             onClick={handleSend}
             disabled={disabled}
@@ -204,6 +201,13 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
           </Button>
         )}
       </div>
+
+      {/* preview selected file */}
+      {file && (
+        <div className="mt-2 text-sm text-gray-500">
+          Selected: {file.name}
+        </div>
+      )}
 
       {/* Typing indicator */}
       {isTyping && (

@@ -15,7 +15,7 @@ const PaymentSummary = ({ amount, merchantName, onProceed, onBack, bank, method 
   const formattedAmount = amount.toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
   return (
-    <div className="flex flex-col h-full min-h-[700px]">
+    <div className="flex flex-col h-full">
       <div className="bg-primary px-4 py-3 flex items-center gap-3">
         <button onClick={onBack}>
           <ChevronLeft className="w-6 h-6 text-primary-foreground" />
@@ -69,7 +69,7 @@ const PaymentSummary = ({ amount, merchantName, onProceed, onBack, bank, method 
         <span className="text-muted-foreground text-xs">Secured by PhonePe</span>
       </div>
 
-      <div className="px-5 pb-6">
+      <div className="px-5 pb-6 mt-5">
         <button onClick={onProceed} className="w-full py-4 rounded-xl bg-accent text-accent-foreground font-semibold text-base transition-all active:scale-[0.98] hover:brightness-110">
           PAY ₹{formattedAmount}
         </button>

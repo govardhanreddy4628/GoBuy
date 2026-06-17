@@ -18,33 +18,51 @@ const MyAccount = () => {
       <div className="p-5 flex gap-4 w-[95%] items-start">
 
         {/* part 1 */}
-        <section className="w-[18%] min-w-56 shadow-md border">
-          <div className="bg-white flex flex-col items-center p-5">
-            <div className="relative w-28 h-28 rounded-full overflow-hidden border border-red-400 border-dotted mb-2">
-              {user?.avatar ? (<img
-                src={user?.avatar}
-                className="w-full h-full object-cover"
-              />) : (<div className="w-28 h-14 bg-gray-50 absolute bg-opacity-90 bottom-0 text-sm text-center pt-2">
-                Upload photo
-              </div>)}
+        <section className="w-[18%] min-w-56 shadow-md border 
+  bg-white dark:bg-gray-900 
+  border-gray-200 dark:border-gray-700">
+
+          <div className="bg-white dark:bg-gray-900 flex flex-col items-center p-5">
+            <div className="relative w-24 h-24 rounded-full overflow-hidden 
+      border-2 border-dashed border-gray-300 dark:border-gray-600 mb-3">
+
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center 
+          text-xs text-gray-500 dark:text-gray-400">
+                  Upload Photo
+                </div>
+              )}
             </div>
 
             {user && (
               <>
-                <h3 className="text-[16px]">{user?.fullName}</h3>
-                <h6 className="text-[14px]">{user.email}</h6>
+                <h3 className="text-[16px] text-gray-800 dark:text-gray-100">
+                  {user?.fullName}
+                </h3>
+                <h6 className="text-[14px] text-gray-600 dark:text-gray-400">
+                  {user.email}
+                </h6>
               </>
             )}
-
           </div>
 
           <div>
-            <ul className="bg-gray-200 flex gap-1 flex-col py-2 pl-4 transition-all ease-in-out">
+            <ul className="bg-gray-200 dark:bg-gray-800 
+      flex gap-1 flex-col py-2 pl-4 
+      transition-all ease-in-out">
 
               {accountMenu.map((item) => (
                 <li
                   key={item.id}
-                  className="flex gap-2 items-center hover:bg-gray-100 p-2 rounded-sm cursor-pointer"
+                  className="flex gap-2 items-center 
+            hover:bg-gray-100 dark:hover:bg-gray-700 
+            p-2 rounded-sm cursor-pointer 
+            text-gray-800 dark:text-gray-200"
                   onClick={() => navigate(`/myaccount/${item.path}`)}
                 >
                   {item.icon}
@@ -53,7 +71,13 @@ const MyAccount = () => {
               ))}
 
               {/* Logout */}
-              <li className="flex gap-2 items-center hover:bg-gray-100 p-2 rounded-sm cursor-pointer" onClick={handleLogout}>
+              <li
+                className="flex gap-2 items-center 
+          hover:bg-gray-100 dark:hover:bg-gray-700 
+          p-2 rounded-sm cursor-pointer 
+          text-red-600 dark:text-red-400"
+                onClick={handleLogout}
+              >
                 <FiLogOut />
                 <span>Logout</span>
               </li>
@@ -62,7 +86,7 @@ const MyAccount = () => {
         </section>
 
         {/* part 2 */}
-        <section className="w-[85%] shadow-md border p-4 bg-white rounded-md animate-fadein">
+        <section className="w-[85%] shadow-md border border-gray-200 dark:border-gray-600 p-4 bg-white dark:bg-gray-900 rounded-md animate-fadein">
           <Outlet />
         </section>
       </div>

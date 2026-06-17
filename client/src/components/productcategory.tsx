@@ -23,6 +23,7 @@ import ProductQuickViewModal from "./ProductQuickViewModal";
 import { IoClose } from "react-icons/io5";
 import { RiRobot2Line } from "react-icons/ri";
 import AiChatModal from "./aiChatModal/aiChatModal";
+import SkeletonCard from "./SkeletonProductCard";
 
 
 interface Product {
@@ -68,6 +69,8 @@ const Productcategory = () => {
   const [openProduct, setOpenProduct] = useState<Product | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [aiModalOpen, setAiModalOpen] = useState(false);
+
+  const [productsLoading, setProductsLoading] = useState(false);
 
   const handleOpenAiChat = (product: Product) => {
     setSelectedProduct(product);
@@ -161,6 +164,7 @@ const Productcategory = () => {
     const controller = new AbortController();
 
     const fetchProducts = async () => {
+      setProductsLoading(true);
       try {
         const query = new URLSearchParams({
           page: page.toString(),
@@ -194,6 +198,8 @@ const Productcategory = () => {
         if (err.name !== "AbortError") {
           console.error(err);
         }
+      } finally {
+        setProductsLoading(false); // stop loading
       }
     };
 
@@ -627,7 +633,12 @@ const Productcategory = () => {
 
           {/* PRODUCTS GRID / LIST */}
           <div className={`grid gap-3 ${isGrid ? "xl:grid-cols-5 lg:grid-cols-3 md:grid-cols-2 grid-cols-1" : "grid-cols-1"}`}>
-            {products.length === 0 ? (
+            {productsLoading ? (
+              // 🔥 Show 10 skeletons (same as limit)
+              Array.from({ length: 10 }).map((_, index) => (
+                <SkeletonCard key={index} />
+              ))
+            ) : products.length === 0 ? (
               <p className="text-center w-full">No products found</p>
             ) : (
               products.map((product) => {
@@ -738,6 +749,35 @@ const Productcategory = () => {
               count={totalPages}
               page={page}
               onChange={(_, value) => setPage(value)}
+              sx={{
+                '& .MuiPaginationItem-root': {
+                  color: 'rgb(55 65 81)', // gray-700 (light)
+                },
+
+                '& .Mui-selected': {
+                  backgroundColor: 'rgb(239 68 68) !important', // red-500
+                  color: '#fff',
+                },
+
+                '& .MuiPaginationItem-root:hover': {
+                  backgroundColor: 'rgba(0,0,0,0.05)',
+                },
+
+                '@media (prefers-color-scheme: dark)': {
+                  '& .MuiPaginationItem-root': {
+                    color: 'rgb(209 213 219)', // gray-300
+                  },
+
+                  '& .Mui-selected': {
+                    backgroundColor: 'rgb(248 113 113) !important', // red-400
+                    color: '#000',
+                  },
+
+                  '& .MuiPaginationItem-root:hover': {
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                  },
+                },
+              }}
             />
           </div>
         </div>

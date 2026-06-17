@@ -20,9 +20,7 @@ const CustomerForm: React.FC<Props> = ({ initialData = {}, onSubmit, onCancel })
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  
  // if you use it as Number(form.orders) ?? 0 gives error because Number(something) always returns number so nullish cohalescing operator will not work thats why use Number(form.orders ?? 0),
-
   const handleSubmit = (e: React.FormEvent) => {
   e.preventDefault();
 

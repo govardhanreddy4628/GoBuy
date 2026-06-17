@@ -7,7 +7,6 @@ import {
   useState,
 } from "react";
 import api, { setAccessToken } from "../api/api_utility";
-import { useCart } from "./cartContext";
 
 export interface AuthUser {
   id: string;
@@ -15,6 +14,7 @@ export interface AuthUser {
   role: "user" | "admin";
   fullName?: string;
   avatar?: string;
+  phoneNumber?: string;
 }
 
 interface AuthContextType {

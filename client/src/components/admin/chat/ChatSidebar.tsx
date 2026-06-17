@@ -28,6 +28,7 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
   const [filter, setFilter] = useState<"all" | "group" | "individual">("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  
 
   const FILTER_OPTIONS = [
     { label: "All", value: "all" },
@@ -52,7 +53,7 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
   }, [chats, searchQuery, filter]);
 
   const sortedChats = [...filteredChats].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    (a, b) => new Date(b.updatedAt!).getTime() - new Date(a.updatedAt!).getTime()
   );
 
   const handleSelect = useCallback((id: string) => {
@@ -220,7 +221,7 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
               >
                 <div className="relative">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={chat.avatar} />
+                    <AvatarImage src={chat.chatAvatar} />
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {chat.isGroup ? (
                         <Users className="h-6 w-6" />
@@ -241,7 +242,7 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
                       {chat.chatName}
                     </h3>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(chat.timestamp).toLocaleTimeString([], {
+                      {new Date(chat.updatedAt!).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}

@@ -27,7 +27,6 @@ const emitEvent = (req, event, users, data) => {
   io.to(usersSocket).emit(event, data);
 };
 
-
 export const fetchAllChats: RequestHandler = async (req: any, res) => {
   try {
     if (!req.user) {
@@ -62,7 +61,7 @@ export const fetchAllChats: RequestHandler = async (req: any, res) => {
 const accessChat: RequestHandler = async (req: AuthRequest, res: Response) => {
   const { userId } = req.body;
 
-  console.log("this is access chat")
+  console.log("this is access chat");
   if (!userId) return res.status(400).json({ message: "UserId required" });
   if (!req.user) {
     return res.status(401).json({ message: "Unauthorized1" });
@@ -105,38 +104,91 @@ const fetchChats: RequestHandler = async (req: any, res) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    console.log("this is access chat")
+    console.log("this is access chat");
     const chats = await ChatModel.find({
       members: req.user._id,
     })
       .populate("members", "fullName avatar")
       .populate("groupAdmins", "fullName avatar")
+      .populate("groupCreator", "fullName avatar")
       .populate({
         path: "lastMessage",
         populate: {
           path: "sender",
-          select: "fullName avatar email",
+          select: "fullName avatar",
         },
       })
       .sort({ updatedAt: -1 });
 
     const formattedChats = chats.map((chat: any) => {
-      let displayName = chat.chatName;
-      let displayAvatar = "";
+      let chatName = chat.chatName;
+      let chatAvatar = chat.avatar || "";
 
-      if (!chat.isGroup) {
+      if (!chat.isGroup && !chat.avatar) {
         const otherUser = chat.members.find(
           (m: any) => m._id.toString() !== req.user._id.toString(),
         );
 
-        displayName = otherUser?.fullName || "User";
-        displayAvatar = otherUser?.avatar || "";
+        chatName = otherUser?.fullName || "User";
+        chatAvatar = otherUser?.avatar || "";
       }
 
+      const unread = chat.unreadCounts?.find(
+        (u: any) => u.user.toString() === req.user._id.toString(),
+      );
+
+      const getLastMessagePreview = (msg: any) => {
+        if (!msg) return "";
+
+        // text + media
+        if (msg.text && msg.media?.url) {
+          return "📎 " + msg.text;
+        }
+
+        // only text
+        if (msg.text) return msg.text;
+
+        // media only
+        switch (msg.type) {
+          case "image":
+            return "📷 Photo";
+          case "video":
+            return "🎥 Video";
+          case "audio":
+            return "🎵 Audio";
+          case "document":
+            return "📄 Document";
+          case "location":
+            return "📍 Location";
+          case "contact":
+            return "👤 Contact";
+          default:
+            return "📎 Attachment";
+        }
+      };
       return {
-        ...chat.toObject(),
-        displayName,
-        displayAvatar,
+        id: chat._id.toString(), // ✅ IMPORTANT
+        chatName,
+        chatAvatar,
+        isGroup: chat.isGroup,
+        members: chat.members,
+
+        lastMessage: chat.lastMessage
+          ? {
+              _id: chat.lastMessage._id,
+              text: chat.lastMessage.text,
+              type: chat.lastMessage.type,
+              media: chat.lastMessage.media,
+              sender: chat.lastMessage.sender,
+              createdAt: chat.lastMessage.createdAt,
+            }
+          : null,
+
+        lastMessagePreview: getLastMessagePreview(chat.lastMessage),
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
+
+        unreadCount: unread ? unread.count : 0,
       };
     });
 
@@ -145,6 +197,40 @@ const fetchChats: RequestHandler = async (req: any, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+const allMessagesOfChat = TryCatch(async (req, res) => {
+  const { chatId } = req.params;
+
+  const messages = await Message.find({ chat: chatId })
+    .populate("sender", "fullName avatar")
+    .populate("chat", "isGroup");
+
+  const transformedMessages = messages.map((msg) => {
+  return {
+    _id: msg._id,
+    text: msg.text,
+    type: msg.type,
+    media: msg.media,
+    createdAt: msg.createdAt,
+
+    chatId: msg.chat?._id,
+
+    status: msg.status,
+    readBy: msg.readBy,
+
+    sender: msg.sender
+      ? {
+          _id: msg.sender._id,
+          fullName: msg.sender.fullName,
+          avatar: msg.sender.avatar,
+        }
+      : null,
+  };
+});
+
+  res.status(200).json(transformedMessages);
+});
 
 const getMyChats = TryCatch(async (req, res, next) => {
   const chats = await ChatModel.find({
@@ -649,35 +735,7 @@ const allChats = TryCatch(async (req, res) => {
   });
 });
 
-const allMessagesOfChat = TryCatch(async (req, res) => {
-  const { chatId } = req.params;
 
-  const messages = await Message.find({ chat: chatId })
-    .populate("sender", "fullName avatar")
-    .populate("chat", "isGroup");
-
-  const transformedMessages = messages.map((msg) => {
-    const { content, attachments, _id, sender, createdAt, chat } = msg;
-
-    return {
-      _id,
-      attachments,
-      content,
-      createdAt,
-      chat: chat?._id,
-      isGroup: chat?.isGroup,
-      sender: sender
-        ? {
-            _id: sender._id,
-            fullName: sender.fullName,
-            avatar: sender.avatar,
-          }
-        : null,
-    };
-  });
-
-  res.status(200).json(transformedMessages);
-});
 
 const allMessages = TryCatch(async (req, res) => {
   const messages = await Message.find({})

@@ -517,6 +517,33 @@ export const getCurrentUserController = async (
   }
 };
 
+
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { fullName, email, phoneNumber } = req.body;
+
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      {
+        fullName,
+        email,
+        phoneNumber, // now string
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.json({
+      success: true,
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false });
+  }
+};
+
+
 // --- controllers/auth/logoutController.ts ---
 const getUserSessionKey = (userId: string) => `user_sessions:${userId}`;
 const getBlacklistKey = (token: string) => `bl_refresh:${token}`;
@@ -1202,5 +1229,39 @@ export const deleteCustomer = async (req: Request, res: Response) => {
     res.json({ message: "Deleted successfully" });
   } catch {
     res.status(500).json({ message: "Delete failed" });
+  }
+};
+
+
+export const deleteCustomers = async (req: Request, res: Response) => {
+  try {
+    // // ✅ assuming req.user is set by auth middleware
+    // if (req.user?.role !== "SUPER-ADMIN") {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "Only super admin can delete customers",
+    //   });
+    // }
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No customer IDs provided",
+      });
+    }
+
+    await UserModel.deleteMany({ _id: { $in: ids } });
+
+    res.status(200).json({
+      success: true,
+      message: "Customers deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete customers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting customers",
+    });
   }
 };

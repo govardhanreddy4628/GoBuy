@@ -75,6 +75,7 @@ import Loader from './ui/Loader.tsx';
 import Products from './components/admin/products/AllProducts/Products.tsx';
 import LogoManager from './components/admin/logo/logoManagement.tsx';
 import TrackOrder from './pages/trackOrderPage.tsx';
+import PaymentPage from './pages/paymentPage.tsx';
 //import { ProductProvider } from "./components/admin/context/productsContext.tsx";
 //import Counter from "./move/counter.tsx";
 
@@ -129,7 +130,7 @@ const App = () => {
                       </Route>
                       <Route path="addaddress" element={<AddressPage />}></Route>
                       <Route path="checkout" element={<Checkout />}></Route>
-                      <Route path="payment" element={<Payment />}></Route>
+                      <Route path="payment" element={<PaymentPage />}></Route>
                       <Route path="phonepe/:id" element={<PhonePeClone />}></Route>
                       <Route path="order-confirmation" element={<OrderConfirmation />}></Route>
                       <Route path="/track-order/:orderId" element={<TrackOrder />} />

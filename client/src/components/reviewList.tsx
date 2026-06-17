@@ -3,6 +3,7 @@ import { Grid } from "lucide-react";
 import { io } from "socket.io-client";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { PUT } from "../api/api_utility";
+import noreview from "../assets/noreview.png"; // ✅ fixed import
 
 
 /* =========================== TYPES =========================== */
@@ -232,61 +233,74 @@ const ReviewList: React.FC<{ productId: string }> = ({ productId }) => {
   return (
     <div className="w-full max-w-5xl mx-auto py-4 px-6 bg-white dark:bg-gray-900 transition-colors">
      
-     <h2 className="text-xl font-semibold text-green-800 dark:text-green-400 border-l-4 border-green-800 dark:border-green-400 pl-2 mb-4">
-      Customers say
-    </h2>
+      <h2 className="text-xl font-semibold text-green-800 dark:text-green-400 border-l-4 border-green-800 dark:border-green-400 pl-2 mb-4">
+        Customers say
+      </h2>
 
-      {/* Top Controls */}
-      <div className="flex justify-between items-center mb-4">
-
-        {/* Sort */}
-        <select
-          value={sort}
-          onChange={(e) => {
-            setPage(1);
-            setSort(e.target.value);
-          }}
-          className="border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 p-2 rounded focus:outline-none"
-        >
-          <option value="recent">Recent</option>
-          <option value="helpful">Most Helpful</option>
-        </select>
-
-        {/* Grid Toggle */}
-        <button
-          onClick={() => setGridView(!gridView)}
-          className="p-2 shadow rounded bg-gray-100 dark:bg-gray-800 hover:scale-105 transition"
-        >
-          <Grid size={18} className="text-gray-800 dark:text-gray-200" />
-        </button>
-      </div>
-
-      {/* Reviews */}
-      <div
-        className={
-          gridView
-            ? "grid grid-cols-2 gap-4"
-            : "grid grid-cols-1 gap-4"
-        }
-      >
-        {reviews.map((review) => (
-          <ReviewCard
-            key={review._id}
-            review={review}
-            onVote={handleVote}
+      {/* ✅ EMPTY STATE ONLY */}
+      {reviews.length === 0 && !loading ? (
+        <div className="flex justify-center items-center">
+          <img
+            src={noreview}
+            alt="No reviews"
+            className="w-[400px] h-[400px] object-contain opacity-90"
           />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <>
+          {/* Top Controls */}
+          <div className="flex justify-between items-center mb-4">
 
-      {/* Load More */}
-      <div className="text-center mt-4">
-        <button
-          onClick={() => setPage((p) => p + 1)}
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:scale-105 transition"
-        >
-          {loading ? "Loading..." : "Load More"}
-        </button>
-      </div>
+            {/* Sort */}
+            <select
+              value={sort}
+              onChange={(e) => {
+                setPage(1);
+                setSort(e.target.value);
+              }}
+              className="border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 p-2 rounded focus:outline-none"
+            >
+              <option value="recent">Recent</option>
+              <option value="helpful">Most Helpful</option>
+            </select>
+
+            {/* Grid Toggle */}
+            <button
+              onClick={() => setGridView(!gridView)}
+              className="p-2 shadow rounded bg-gray-100 dark:bg-gray-800 hover:scale-105 transition"
+            >
+              <Grid size={18} className="text-gray-800 dark:text-gray-200" />
+            </button>
+          </div>
+
+          {/* Reviews */}
+          <div
+            className={
+              gridView
+                ? "grid grid-cols-2 gap-4"
+                : "grid grid-cols-1 gap-4"
+            }
+          >
+            {reviews.map((review) => (
+              <ReviewCard
+                key={review._id}
+                review={review}
+                onVote={handleVote}
+              />
+            ))}
+          </div>
+
+          {/* Load More */}
+          <div className="text-center mt-4">
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:scale-105 transition"
+            >
+              {loading ? "Loading..." : "Show More"}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };

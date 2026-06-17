@@ -25,6 +25,10 @@ import RatingStats from "./ratingStats";
 import ReviewList from "./reviewList";
 import ProductQA from "./productQA";
 import { POST } from "../api/api_utility";
+import ProductsSlider from "./productsSlider";
+import ProductQuickViewModal from "./ProductQuickViewModal";
+import AiChatModal from "./aiChatModal/aiChatModal";
+import { Product } from "./admin/types/databaseTypes";
 
 /* ================= TYPES ================= */
 
@@ -66,10 +70,25 @@ interface IProduct {
     rating: number;
     brand: string;
     shortDescription: string;
+    description?: string;
     category: string;
     images: string[];
     specifications: Specification[];
     variants: Variant[];
+}
+
+interface Product {
+    _id: string;
+    name: string;
+    shortDescription: string;
+    description?: string;
+    brand: string;
+    finalPrice: number;
+    listedPrice: number;
+    discountPercentage: number;
+    rating: number;
+    images: { url: string }[];
+    stock?: number;
 }
 
 /* ================= COMPONENT ================= */
@@ -90,6 +109,24 @@ const ProductDetails2 = () => {
     const { wishlist, toggleWishlist } = useWishlist();
 
     const { isAuthenticated } = useAuth();
+
+    const [openProduct, setOpenProduct] = useState<Product | null>(null);
+    const [aiModalOpen, setAiModalOpen] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+    const handleOpenAiChat = (product: Product) => {
+        setSelectedProduct(product);
+        setAiModalOpen(true);
+    };
+
+    const handleCloseAiChat = () => {
+        setAiModalOpen(false);
+        setSelectedProduct(null);
+    };
+
+    const handleClickOpen = (product: Product) => {
+        setOpenProduct(product);
+    };
 
     /* ================= FETCH ================= */
 
@@ -116,8 +153,8 @@ const ProductDetails2 = () => {
         fetch(`http://localhost:8080/api/v1/reviews?productId=${id}`)
             .then(res => res.json())
             .then(data => setStats(data.stats));
-        }, [id]);
-        console.log("stats", stats)
+    }, [id]);
+    console.log("stats", stats)
 
 
 
@@ -182,232 +219,244 @@ const ProductDetails2 = () => {
 
     /* ================= RENDER ================= */
     return (
-        <section className="max-w-9xl rounded-lg shadow-lg bg-gray-200 dark:bg-gray-800 ">
+        <section className="max-w-9xl rounded-lg shadow-lg bg-gray-200 dark:bg-gray-800">
             <div className="flex justify-center">
-            <div className="flex w-[95%] justify-center p-5 dark:bg-gray-800 gap-8">
+                <div className="flex w-[95%] justify-center p-5 dark:bg-gray-800 gap-8">
 
-                {/* ================= IMAGE COLUMN (UNCHANGED) ================= */}
-                <div className="flex items-center gap-4 w-[45%] bg-gray-50 dark:bg-gray-900 py-5 pl-4 rounded-xl max-h-[550px] transition-colors duration-300">
-                    {/* Thumbs */}
-                    <div className="col1.1 w-24 h-[460px] lg:h-[500px]">
-                        <Swiper
-                            direction="vertical"
-                            navigation={images.length > 4}
-                            spaceBetween={15}
-                            slidesPerView="auto"
-                            freeMode
-                            onSwiper={setThumbsSwiper}
-                            modules={[FreeMode, Navigation, Thumbs]}
-                            className="verticalSwiper h-full"
-                        >
-                            {images.map((src, i) => (
-                                <SwiperSlide
-                                    key={i}
-                                    className="!w-full !h-[80px] p-1 opacity-70 cursor-pointer group rounded-md overflow-hidden"
-                                >
-                                    <img
-                                        src={getCloudinaryImage(src, {
-                                            width: 100,
-                                            height: 100,
-                                        })}
-                                        alt={`Slide ${i + 1}`}
-                                        className="w-full h-full object-cover transition-all group-hover:scale-105 rounded-sm"
-                                    />
-                                </SwiperSlide>
-                            ))}
-                        </Swiper>
-                    </div>
+                    {/* ================= IMAGE COLUMN (STICKY) ================= */}
+<div className="w-[45%]">
+  <div className="sticky top-24 flex items-center gap-4 
+      bg-gray-50 dark:bg-gray-900 py-5 pl-4 rounded-xl 
+      max-h-[550px] transition-colors duration-300">
 
-                    {/* Main Image */}
-                    <div className="col2 w-[76%] h-[500px] ml-4 flex items-center justify-center">
-                        <Swiper
-                            spaceBetween={0}
-                            slidesPerView={1}
-                            navigation
-                            thumbs={{ swiper: thumbsSwiper }}
-                            modules={[FreeMode, Navigation, Thumbs]}
-                            className="mySwiper2 overflow-x-hidden rounded-lg w-full h-full  flex-1"
-                        >
-                            {images.map((src) => (
-                                <SwiperSlide key={src} className="!flex items-center justify-center"
-                                >
-                                    <InnerImageZoom
-                                        src={src}
-                                        zoomType="hover"
-                                        zoomPreload
-                                        className="object-cover w-full h-full align-middle"
-                                        alt="Primary product image"
-                                        onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.src = 'https://i5.walmartimages.com/asr/d37e7bbd-6700-46a…ad.jpeg?odnHeight=2000&odnWidth=2000&odnBg=FFFFFF' }}
-                                    />
-                                </SwiperSlide>
-                            ))}
-                        </Swiper>
-                    </div>
-                </div>
+    {/* Thumbs */}
+    <div className="col1.1 w-24 h-[460px] lg:h-[500px]">
+      <Swiper
+        direction="vertical"
+        navigation={images.length > 4}
+        spaceBetween={15}
+        slidesPerView="auto"
+        freeMode
+        onSwiper={setThumbsSwiper}
+        modules={[FreeMode, Navigation, Thumbs]}
+        className="verticalSwiper h-full"
+      >
+        {images.map((src, i) => (
+          <SwiperSlide
+            key={i}
+            className="!w-full !h-[80px] p-1 opacity-70 cursor-pointer group rounded-md overflow-hidden"
+          >
+            <img
+              src={getCloudinaryImage(src, { width: 100, height: 100 })}
+              alt={`Slide ${i + 1}`}
+              className="w-full h-full object-cover transition-all group-hover:scale-105 rounded-sm"
+            />
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </div>
 
-                {/* ================= PRODUCT INFO (UNCHANGED) ================= */}
-                <div className="product-content w-full lg:w-[45%] lg:pr-5 
-text-black dark:text-white 
-flex bg-gray-50 dark:bg-gray-900 
-py-5 pl-6 rounded-xl transition-colors duration-300">
+    {/* Main Image */}
+    <div className="col2 w-[76%] h-[500px] ml-4 flex items-center justify-center">
+      <Swiper
+        spaceBetween={0}
+        slidesPerView={1}
+        navigation
+        thumbs={{ swiper: thumbsSwiper }}
+        modules={[FreeMode, Navigation, Thumbs]}
+        className="mySwiper2 overflow-x-hidden rounded-lg w-full h-full flex-1"
+      >
+        {images.map((src) => (
+          <SwiperSlide key={src} className="!flex items-center justify-center">
+            <InnerImageZoom
+              src={src}
+              zoomType="hover"
+              zoomPreload
+              className="object-cover w-full h-full align-middle"
+              alt="Primary product image"
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                e.currentTarget.src =
+                  "https://i5.walmartimages.com/asr/d37e7bbd-6700-46a…ad.jpeg";
+              }}
+            />
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </div>
+  </div>
+</div>
 
-                    <div>
-                        <h1 className="text-xl sm:text-2xl font-semibold mb-2">
-                            {product.name}
-                        </h1>
+                    {/* ================= PRODUCT INFO (UNCHANGED) ================= */}
+                    <div className="product-content w-full lg:w-[45%] lg:pr-5 
+                    text-black dark:text-white flex bg-gray-50 dark:bg-gray-900 
+                    py-5 pl-6 rounded-xl transition-colors duration-300 ">
 
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                            <span>
-                                Brand:{" "}
-                                <strong className="text-black dark:text-white">
-                                    {product.brand}
-                                </strong>
-                            </span>
+                        <div>
+                            <h1 className="text-xl sm:text-2xl font-semibold mb-2">
+                                {product.name}
+                            </h1>
 
-                            <div className="flex items-center text-yellow-500" aria-label="Rating: 5 out of 5">
-                                <div className="text-yellow-400 text-[16px]">
-                                    {"★".repeat(Math.floor(product.rating))}
-                                    {"☆".repeat(5 - Math.floor(product.rating))}
-                                </div>
-                                <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                                    ({product.rating} / 5)
-                                </span>
-                            </div>
-
-                            <span className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-red-500">
-                                Reviews ({stats?.totalReviews})
-                            </span>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-4">
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-400 line-through text-lg">
-                                    ₹{product.listedPrice}
-                                </span>
-                                <span className="text-red-600 text-lg font-bold">
-                                    ₹{product.finalPrice}
-                                </span>
-                            </div>
-
-                            <div>
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
                                 <span>
-                                    In Stock:{" "}
-                                    <span className="text-green-600 font-bold">
-                                        {product.quantityInStock} Items
+                                    Brand:{" "}
+                                    <strong className="text-black dark:text-white">
+                                        {product.brand}
+                                    </strong>
+                                </span>
+
+                                <div className="flex items-center text-yellow-500" aria-label="Rating: 5 out of 5">
+                                    <div className="text-yellow-400 text-[16px]">
+                                        {"★".repeat(Math.floor(product.rating))}
+                                        {"☆".repeat(5 - Math.floor(product.rating))}
+                                    </div>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                                        ({product.rating} / 5)
                                     </span>
+                                </div>
+
+                                <span className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-red-500">
+                                    Reviews ({stats?.totalReviews})
                                 </span>
                             </div>
-                        </div>
 
-                        <p className="mt-4 text-gray-700 dark:text-gray-300">
-                            {product.shortDescription}
-                        </p>
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mt-4">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-400 line-through text-lg">
+                                        ₹{product.listedPrice}
+                                    </span>
+                                    <span className="text-red-600 text-lg font-bold">
+                                        ₹{product.finalPrice}
+                                    </span>
+                                </div>
 
-                        {/* SIZE */}
-                        <div className="flex items-center gap-4 mt-5">
-                            <span className="text-base font-medium">Size:</span>
-                            <div className="flex gap-2">
-                                {["S", "M", "L"].map((button, idx) => (
-                                    <button
-                                        key={button}
-                                        onClick={() => handleSizeButtonChange(idx)}
-                                        className="px-3 py-1 border rounded 
+                                <div>
+                                    <span>
+                                        In Stock:{" "}
+                                        <span className="text-green-600 font-bold">
+                                            {product.quantityInStock} Items
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p className="mt-4 text-gray-700 dark:text-gray-300">
+                                {product.shortDescription}
+                            </p>
+
+                            {/* SIZE */}
+                            <div className="flex items-center gap-4 mt-5">
+                                <span className="text-base font-medium">Size:</span>
+                                <div className="flex gap-2">
+                                    {["S", "M", "L"].map((button, idx) => (
+                                        <button
+                                            key={button}
+                                            onClick={() => handleSizeButtonChange(idx)}
+                                            className="px-3 py-1 border rounded 
             border-gray-300 dark:border-gray-600 
             hover:bg-gray-100 dark:hover:bg-gray-800 
             transition"
-                                    >
-                                        {button}
-                                    </button>
-                                ))}
+                                        >
+                                            {button}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
 
-                        {/* SHIPPING */}
-                        <p className="text-md text-gray-800 dark:text-gray-300 mt-5 mb-2 flex items-center gap-2">
-                            <LiaShippingFastSolid className="text-lg" />
-                            <span>Free Shipping (Est. Delivery: 2-3 Days)</span>
-                        </p>
+                            {/* SHIPPING */}
+                            <p className="text-md text-gray-800 dark:text-gray-300 mt-5 mb-2 flex items-center gap-2">
+                                <LiaShippingFastSolid className="text-lg" />
+                                <span>Free Shipping (Est. Delivery: 2-3 Days)</span>
+                            </p>
 
-                        {/* QUANTITY + CART */}
-                        <div className="flex items-center gap-4 py-4">
-                            <div className="w-20 relative">
-                                <input
-                                    type="number"
-                                    value={quantity}
-                                    min={1}
-                                    onChange={(e) => {
-                                        const val = parseInt(e.target.value);
-                                        if (!isNaN(val) && val > 0) setQuantity(val);
-                                    }}
-                                    className="w-full h-10 pl-3 border rounded 
+                            {/* QUANTITY + CART */}
+                            <div className="flex items-center gap-4 py-4">
+                                <div className="w-20 relative">
+                                    <input
+                                        type="number"
+                                        value={quantity}
+                                        min={1}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            if (!isNaN(val) && val > 0) setQuantity(val);
+                                        }}
+                                        className="w-full h-10 pl-3 border rounded 
           bg-white dark:bg-gray-800 
           text-black dark:text-white 
           border-gray-300 dark:border-gray-600 
           focus:outline-none"
-                                />
+                                    />
 
-                                <div className="absolute inset-y-0 right-0 flex flex-col justify-between">
-                                    <button
-                                        type="button"
-                                        onClick={handleIncrease}
-                                        className="h-5 text-xs text-gray-600 dark:text-gray-300 
+                                    <div className="absolute inset-y-0 right-0 flex flex-col justify-between">
+                                        <button
+                                            type="button"
+                                            onClick={handleIncrease}
+                                            className="h-5 text-xs text-gray-600 dark:text-gray-300 
             hover:text-black dark:hover:text-white 
             px-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-sm"
-                                    >
-                                        <IoChevronUp />
-                                    </button>
+                                        >
+                                            <IoChevronUp />
+                                        </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={handleDecrease}
-                                        className="h-5 text-xs text-gray-600 dark:text-gray-300 
+                                        <button
+                                            type="button"
+                                            onClick={handleDecrease}
+                                            className="h-5 text-xs text-gray-600 dark:text-gray-300 
             hover:text-black dark:hover:text-white 
             px-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-sm"
-                                    >
-                                        <IoChevronDown />
-                                    </button>
+                                        >
+                                            <IoChevronDown />
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <button
-                                onClick={() => addToCart(product._id, quantity)}
-                                className="flex items-center gap-2 
+                                <button
+                                    onClick={() => addToCart(product._id, quantity)}
+                                    className="flex items-center gap-2 
         bg-red-500 text-white 
         hover:bg-black dark:hover:bg-red-600 
         px-6 py-2 rounded transition-all"
-                            >
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM7 17h12v-2H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03L20.88 4H5.21l-.94-2H1v2h2l3.6 7.59L5.27 14.6c-.48.89.17 1.9 1.15 1.9z" />
-                                </svg>
-                                Add to Cart
-                            </button>
-                        </div>
+                                >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM7 17h12v-2H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03L20.88 4H5.21l-.94-2H1v2h2l3.6 7.59L5.27 14.6c-.48.89.17 1.9 1.15 1.9z" />
+                                    </svg>
+                                    Add to Cart
+                                </button>
+                            </div>
 
-                        {/* WISHLIST */}
-                        <div className="flex gap-4 mt-2">
-                            <button
-                                onClick={() => toggleWishlist(product._id)}
-                                className={`flex items-center gap-2 
+                            {/* WISHLIST */}
+                            <div className="flex gap-4 mt-2">
+                                <button
+                                    onClick={() => toggleWishlist(product._id)}
+                                    className={`flex items-center gap-2 
         ${wishlist.includes(product._id)
-                                        ? "text-red-500"
-                                        : "text-gray-600 dark:text-gray-400"
-                                    }`}
-                            >
-                                <FaRegHeart /> Wishlist
-                            </button>
+                                            ? "text-red-500"
+                                            : "text-gray-600 dark:text-gray-400"
+                                        }`}
+                                >
+                                    <FaRegHeart /> Wishlist
+                                </button>
 
-                            <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-red-500">
-                                <GoGitCompare /> Compare
-                            </button>
+                                <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-red-500">
+                                    <GoGitCompare /> Compare
+                                </button>
+                            </div>
+
+                            <ProductInfo rating={product.rating} totalreviwes={stats?.totalReviews}/>
                         </div>
-
-                        <ProductInfo />
                     </div>
                 </div>
             </div>
+
+            <div className="flex w-[95%] mx-auto gap-8 mb-5">
+                {/* LEFT (empty spacer to match image column) */}
+                <div className="w-[45%]" />
+                {/* RIGHT (same width as product info) */}
+                <div className="w-[45%] ml-12">
+                    <ProductQA productId={id || ""} />
+                </div>
             </div>
 
-            <section className='w-[95%] mx-auto'>
+            <section className='w-[95%] mx-auto pb-2'>
                 <div className='flex bg-transparent w-full flex-col lg:flex-row '>
                     {stats && (
                         <RatingStats
@@ -427,10 +476,25 @@ py-5 pl-6 rounded-xl transition-colors duration-300">
                         <ReviewList productId={id || ""} />
                     </div>
                 </div>
-                <div>
-                    <ProductQA productId={id || ""} />
-                </div>
             </section>
+
+            <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Recently Viewed Products" route="recently-viewed" />
+            <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Top Rated Products" route="top-rated" />
+
+            {/* DIALOG */}
+            <ProductQuickViewModal
+                open={!!openProduct}
+                product={openProduct}
+                onClose={() => setOpenProduct(null)}
+            />
+
+            {/* AI Chat modal */}
+            {aiModalOpen && selectedProduct && (
+                <AiChatModal
+                    product={selectedProduct}
+                    onClose={handleCloseAiChat}
+                />
+            )}
         </section>
     );
 };

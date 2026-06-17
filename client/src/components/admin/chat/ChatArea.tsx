@@ -19,7 +19,7 @@ interface Message {
 interface ChatAreaProps {
   selectedChat: Chat | null;
   messages: Message[];
-  onSendMessage: (message: string) => void;
+  onSendMessage: (data: { text?: string; file?: File | null }) => void;
   socketRef: React.MutableRefObject<Socket | null>;
   selectedChatId?: string;
   handleNewChat: () => void;
@@ -60,7 +60,7 @@ export function ChatArea({
         //isOnline={selectedChat.isOnline}
         isGroup={selectedChat.isGroup}
         memberCount={selectedChat.memberCount}
-        avatar={selectedChat.avatar}
+        chatAvatar={selectedChat.chatAvatar}
       />
 
       <MessagesList messages={messages} />

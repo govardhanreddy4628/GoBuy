@@ -99,7 +99,7 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
   // METHODS SCREEN
   if (step === "methods") {
     return (
-      <div className="flex flex-col h-full min-h-[700px]">
+      <div className="flex flex-col h-full min-h-[600px]">
         <Header title="PhonePe" showBack={!!onBack} />
         <div className="px-5 pt-6 pb-5">
           <p className="text-muted-foreground text-xs mb-1">PAYING TO {merchantName.toUpperCase()}</p>
@@ -109,18 +109,18 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
         <div className="px-5 pt-5 flex-1">
           <p className="text-muted-foreground text-xs mb-4">PAYMENT METHODS</p>
           <div className="space-y-3">
-            <button onClick={() => setStep("upi")} className="w-full bg-card rounded-xl p-4 flex items-center gap-4 transition-all active:scale-[0.98] hover:brightness-110">
-              <div className="w-11 h-11 rounded-xl bg-accent/20 flex items-center justify-center"><Smartphone className="w-5 h-5 text-accent" /></div>
+            <button onClick={() => setStep("upi")} className="w-full bg-gray-100 rounded-xl p-4 flex items-center gap-4 transition-all active:scale-[0.98] hover:bg-gray-200">
+              <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center"><Smartphone className="w-5 h-5" /></div>
               <div className="flex-1 text-left"><p className="text-foreground text-sm font-semibold">UPI</p><p className="text-muted-foreground text-xs">Pay using UPI ID or QR</p></div>
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </button>
-            <button onClick={() => setStep("card")} className="w-full bg-card rounded-xl p-4 flex items-center gap-4 transition-all active:scale-[0.98] hover:brightness-110">
-              <div className="w-11 h-11 rounded-xl bg-accent/20 flex items-center justify-center"><CreditCard className="w-5 h-5 text-accent" /></div>
+            <button onClick={() => setStep("card")} className="w-full bg-gray-100 rounded-xl p-4 flex items-center gap-4 transition-all active:scale-[0.98] hover:bg-gray-200">
+              <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center"><CreditCard className="w-5 h-5" /></div>
               <div className="flex-1 text-left"><p className="text-foreground text-sm font-semibold">Debit / Credit Card</p><p className="text-muted-foreground text-xs">Visa, Mastercard, RuPay</p></div>
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </button>
-            <button onClick={() => setStep("netbanking")} className="w-full bg-card rounded-xl p-4 flex items-center gap-4 transition-all active:scale-[0.98] hover:brightness-110">
-              <div className="w-11 h-11 rounded-xl bg-accent/20 flex items-center justify-center"><Building2 className="w-5 h-5 text-accent" /></div>
+            <button onClick={() => setStep("netbanking")} className="w-full bg-gray-100 rounded-xl p-4 flex items-center gap-4 transition-all active:scale-[0.98] hover:bg-gray-200">
+              <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center"><Building2 className="w-5 h-5" /></div>
               <div className="flex-1 text-left"><p className="text-foreground text-sm font-semibold">Net Banking</p><p className="text-muted-foreground text-xs">All Indian banks</p></div>
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </button>
@@ -137,10 +137,10 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
   // UPI SCREEN — real QR
   if (step === "upi") {
     return (
-      <div className="flex flex-col h-full min-h-[700px]">
+      <div className="flex flex-col h-full">
         <Header title="Pay via UPI" />
         <div className="px-5 pt-5 flex-1">
-          <div className="bg-card rounded-xl p-6 flex flex-col items-center mb-5">
+          <div className="bg-gray-100 rounded-xl p-6 flex flex-col items-center mb-5">
             <div className="w-44 h-44 rounded-xl flex items-center justify-center mb-3 bg-primary-foreground p-2">
               {qrDataUrl ? (
                 <img src={qrDataUrl} alt="UPI QR Code" className="w-full h-full rounded-lg" />
@@ -158,11 +158,11 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
             <div className="flex-1 border-t border-phonepe-divider" />
           </div>
           <p className="text-muted-foreground text-xs mb-2">ENTER UPI ID</p>
-          <div className="bg-card rounded-xl overflow-hidden">
-            <input type="text" value={upiId} onChange={(e) => setUpiId(e.target.value)} placeholder="yourname@upi" className="w-full bg-transparent px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none" />
+          <div className="!bg-gray-100 border rounded-xl overflow-hidden">
+            <input type="text" value={upiId} onChange={(e) => setUpiId(e.target.value)} placeholder="yourname@upi" className="w-full px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none" />
           </div>
         </div>
-        <div className="px-5 pb-6">
+        <div className="px-5 pb-6 !mt-5">
           <button onClick={() => onProceedToPin("upi")} disabled={!upiId.includes("@")} className={`w-full py-4 rounded-xl font-semibold text-base transition-all ${upiId.includes("@") ? "bg-accent text-accent-foreground active:scale-[0.98] hover:brightness-110" : "bg-muted text-muted-foreground cursor-not-allowed"}`}>
             Pay ₹{formattedAmount}
           </button>
@@ -175,12 +175,12 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
   if (step === "card") {
     const isCardValid = cardNumber.replace(/\s/g, "").length === 16 && cardExpiry.length === 5 && cardCvv.length === 3 && cardName.length > 2;
     return (
-      <div className="flex flex-col h-full min-h-[700px]">
+      <div className="flex flex-col h-full min-h-[900px] ">
         <Header title="Debit / Credit Card" />
         <div className="px-5 pt-5 flex-1 space-y-4">
           {/* Test Card Banner */}
           <div className="bg-accent/10 border border-accent/30 rounded-xl px-4 py-2 flex items-center gap-2">
-            <span className="text-accent text-xs font-semibold">🧪 TEST CARD</span>
+            <span className="text-xs font-semibold">🧪 TEST CARD</span>
             <span className="text-muted-foreground text-xs">— This is a simulated payment</span>
           </div>
 
@@ -226,13 +226,13 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
             <div className="absolute -right-4 top-8 w-24 h-24 rounded-full bg-primary-foreground/5" />
           </div>
           {/* Tap hint below card */}
-          <p className="text-center text-accent text-xs font-medium -mt-2">👆 Tap the card above to auto-fill details</p>
+          <p className="text-center tet-gray-600 text-xs font-medium -mt-2">👆 Tap the card above to auto-fill details</p>
 
-          <div><p className="text-muted-foreground text-xs mb-2">CARD NUMBER</p><div className="bg-card rounded-xl overflow-hidden"><input type="text" value={cardNumber} onChange={(e) => setCardNumber(formatCardNumber(e.target.value))} placeholder="1234 5678 9012 3456" className="w-full bg-transparent px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none tracking-wider" maxLength={19} /></div></div>
-          <div><p className="text-muted-foreground text-xs mb-2">CARDHOLDER NAME</p><div className="bg-card rounded-xl overflow-hidden"><input type="text" value={cardName} onChange={(e) => setCardName(e.target.value)} placeholder="John Doe" className="w-full bg-transparent px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none" /></div></div>
+          <div><p className="text-muted-foreground text-xs mb-2">CARD NUMBER</p><div className="bg-card rounded-xl overflow-hidden"><input type="text" value={cardNumber} onChange={(e) => setCardNumber(formatCardNumber(e.target.value))} placeholder="1234 5678 9012 3456" className="w-full bg-gray-100 px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none tracking-wider" maxLength={19} /></div></div>
+          <div><p className="text-muted-foreground text-xs mb-2">CARDHOLDER NAME</p><div className="bg-card rounded-xl overflow-hidden"><input type="text" value={cardName} onChange={(e) => setCardName(e.target.value)} placeholder="John Doe" className="w-full bg-gray-100 px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none" /></div></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><p className="text-muted-foreground text-xs mb-2">EXPIRY</p><div className="bg-card rounded-xl overflow-hidden"><input type="text" value={cardExpiry} onChange={(e) => setCardExpiry(formatExpiry(e.target.value))} placeholder="MM/YY" className="w-full bg-transparent px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none" maxLength={5} /></div></div>
-            <div><p className="text-muted-foreground text-xs mb-2">CVV</p><div className="bg-card rounded-xl overflow-hidden"><input type="password" value={cardCvv} onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="•••" className="w-full bg-transparent px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none" maxLength={3} /></div></div>
+            <div><p className="text-muted-foreground text-xs mb-2">EXPIRY</p><div className="bg-card rounded-xl overflow-hidden"><input type="text" value={cardExpiry} onChange={(e) => setCardExpiry(formatExpiry(e.target.value))} placeholder="MM/YY" className="w-full bg-gray-100 px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none" maxLength={5} /></div></div>
+            <div><p className="text-muted-foreground text-xs mb-2">CVV</p><div className="bg-card rounded-xl overflow-hidden"><input type="password" value={cardCvv} onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="•••" className="w-full bg-gray-100 px-4 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none" maxLength={3} /></div></div>
           </div>
           <div className="flex items-center gap-2 pt-2"><ShieldCheck className="w-4 h-4 text-phonepe-success" /><span className="text-muted-foreground text-xs">Your card details are encrypted and secure</span></div>
         </div>
@@ -250,11 +250,11 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
     const bank = banks.find((b) => b.code === selectedBank);
     const isLoginValid = nbUserId.length >= 4 && nbPassword.length >= 4;
     return (
-      <div className="flex flex-col h-full min-h-[700px]">
+      <div className="flex flex-col h-full">
         <Header title={bank?.name || "Net Banking"} />
         <div className="px-5 pt-5 flex-1">
           {/* Bank branding header */}
-          <div className="bg-card rounded-xl p-5 flex items-center gap-4 mb-6">
+          <div className="bg-gray-100 rounded-xl p-5 flex items-center gap-4 mb-6">
             <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: `hsl(${bank?.color})` }}>
               <span className="text-primary-foreground font-bold text-xs">{bank?.code}</span>
             </div>
@@ -267,34 +267,34 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
           <div className="space-y-4">
             <div>
               <p className="text-muted-foreground text-xs mb-2">USER ID / CUSTOMER ID</p>
-              <div className="bg-card rounded-xl overflow-hidden flex items-center">
+              <div className="bg-gray-100 rounded-xl overflow-hidden flex items-center">
                 <div className="pl-4"><User className="w-4 h-4 text-muted-foreground" /></div>
                 <input
                   type="text"
                   value={nbUserId}
                   onChange={(e) => setNbUserId(e.target.value)}
                   placeholder="Enter User ID"
-                  className="w-full bg-transparent px-3 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none"
+                  className="w-full bg-gray-100 px-3 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none"
                 />
               </div>
             </div>
             <div>
               <p className="text-muted-foreground text-xs mb-2">PASSWORD</p>
-              <div className="bg-card rounded-xl overflow-hidden flex items-center">
+              <div className="bg-gray-100 rounded-xl overflow-hidden flex items-center">
                 <div className="pl-4"><Lock className="w-4 h-4 text-muted-foreground" /></div>
                 <input
                   type="password"
                   value={nbPassword}
                   onChange={(e) => setNbPassword(e.target.value)}
                   placeholder="Enter Password"
-                  className="w-full bg-transparent px-3 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none"
+                  className="w-full bg-gray-100 px-3 py-3.5 text-foreground text-sm placeholder:text-muted-foreground/50 outline-none"
                 />
               </div>
             </div>
 
             {/* Test credentials hint */}
             <div className="bg-accent/10 border border-accent/30 rounded-xl p-3">
-              <p className="text-accent text-xs font-semibold mb-1">🧪 Simulation Mode</p>
+              <p className=" text-xs font-semibold mb-1">🧪 Simulation Mode</p>
               <p className="text-muted-foreground text-xs">Enter any User ID &amp; Password (min 4 chars each) to proceed</p>
             </div>
 
@@ -304,13 +304,13 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
             </div>
           </div>
         </div>
-        <div className="px-5 pb-6">
+        <div className="px-5 pb-6 mt-4">
           <button
             onClick={() => {
               if (bank) onProceedToPin("netbanking", bank);
             }}
             disabled={!isLoginValid}
-            className={`w-full py-4 rounded-xl font-semibold text-base transition-all ${isLoginValid ? "bg-accent text-accent-foreground active:scale-[0.98] hover:brightness-110" : "bg-muted text-muted-foreground cursor-not-allowed"}`}
+            className={`w-full py-4 rounded-xl font-semibold text-base transition-all ${isLoginValid ? "bg-primary text-accent-foreground active:scale-[0.98] hover:brightness-110" : "bg-muted text-muted-foreground cursor-not-allowed"}`}
           >
             Login & Pay ₹{formattedAmount}
           </button>
@@ -321,7 +321,7 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
 
   // NET BANKING — bank selection
   return (
-    <div className="flex flex-col h-full min-h-[700px]">
+    <div className="flex flex-col h-full">
       <Header title="Net Banking" />
       <div className="px-5 pt-5 flex-1">
         <p className="text-muted-foreground text-xs mb-4">SELECT YOUR BANK</p>
@@ -339,11 +339,11 @@ const PhonepeGateway = ({ amount, merchantName = "Merchant", onProceedToPin, onB
           ))}
         </div>
       </div>
-      <div className="px-5 pb-6">
+      <div className="px-5 pb-6 mt-4">
         <button
           onClick={() => setStep("netbanking-login")}
           disabled={!selectedBank}
-          className={`w-full py-4 rounded-xl font-semibold text-base transition-all ${selectedBank ? "bg-accent text-accent-foreground active:scale-[0.98] hover:brightness-110" : "bg-muted text-muted-foreground cursor-not-allowed"}`}
+          className={`w-full py-4 rounded-xl font-semibold text-base transition-all ${selectedBank ? "bg-primary text-accent-foreground active:scale-[0.98] hover:brightness-110" : "bg-muted text-muted-foreground cursor-not-allowed"}`}
         >
           Continue
         </button>

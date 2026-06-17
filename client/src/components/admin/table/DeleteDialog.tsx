@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "../../../hooks/use-toast";
+import { useAuth } from "../../../context/authContext"; // ✅ add this
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,26 +12,36 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../../ui/alert-dialog";
+import { POST } from "../../../api/api_utility";
 
 interface DeleteDialogProps {
   trigger: React.ReactNode;
   selectedIds: (string | number)[];
-  resourceName?: string; // "customer(s)" by default
-  deleteUrl: string; // API endpoint
-  onDeleted?: () => void; // callback after delete
+  resourceName?: string;
+  onDeleted?: () => void;
 }
 
 const DeleteDialog: React.FC<DeleteDialogProps> = ({
   trigger,
   selectedIds,
   resourceName = "customer(s)",
-  deleteUrl,
   onDeleted,
 }) => {
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth(); // ✅ get user
 
   const handleDelete = async () => {
-    if (selectedIds.length === 0) {
+    // // 🚫 ROLE CHECK
+    // if (user?.role !== "SUPER-ADMIN") {
+    //   toast({
+    //     title: "Access Denied",
+    //     description: "Only super admin can delete the customers",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
+
+    if (!selectedIds.length) {
       toast({
         title: "Nothing selected",
         description: `Please select at least one ${resourceName} before deleting.`,
@@ -42,25 +53,24 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
     try {
       setLoading(true);
 
-      const res = await fetch(deleteUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selectedIds }),
+      const res = await POST("/api/customers/delete", {
+        ids: selectedIds,
       });
 
-      if (!res.ok) throw new Error("Failed to delete");
+      console.log("DELETE RESPONSE:", res.data);
 
       toast({
         title: "Deleted successfully",
         description: `Removed ${selectedIds.length} ${resourceName}.`,
       });
 
-      onDeleted?.();
+      onDeleted?.(); // ✅ trigger refresh
     } catch (err) {
       toast({
         title: "Delete failed",
-        description: (err as Error).message,
-        variant: "destructive",
+        description:
+          err?.response?.data?.message || "Delete failed", 
+          variant: "destructive",
       });
     } finally {
       setLoading(false);

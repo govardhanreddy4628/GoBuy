@@ -2,8 +2,6 @@ import { ChevronLeft, Delete, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { GatewayMethod } from "./payment";
 
-
-
 interface Props {
     onSubmit: () => void;
     onBack: () => void;
@@ -33,7 +31,7 @@ const OtpEntry = ({ onSubmit, onBack, method }: Props) => {
         : "Enter the OTP sent by your bank";
 
     return (
-        <div className="flex flex-col h-full min-h-[700px]">
+        <div className="flex flex-col h-full">
             <div className="bg-primary px-4 py-3 flex items-center gap-3">
                 <button onClick={onBack}><ChevronLeft className="w-6 h-6 text-primary-foreground" /></button>
                 <span className="text-primary-foreground font-semibold text-base">{title}</span>

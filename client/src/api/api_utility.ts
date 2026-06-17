@@ -1,8 +1,7 @@
-// services/api.ts
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 
 //Config
-const BASE_URL = import.meta.env.VITE_BACKEND_URL_LOCAL || "http://localhost:5000";
+const BASE_URL = import.meta.env.MODE === "development" ? import.meta.env.VITE_BACKEND_URL_LOCAL || "http://localhost:5000" : import.meta.env.VITE_BACKEND_URL_PRODUCTION;
 
 //In-memory access token
 let accessToken: string | null = null;
@@ -21,6 +20,12 @@ const api: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
+// 🔥 Separate client for refresh
+const refreshClient = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: true,
+});
+
 // Refresh lock
 let refreshPromise: Promise<string> | null = null;
 
@@ -29,13 +34,16 @@ let refreshPromise: Promise<string> | null = null;
 api.interceptors.request.use(
   (config) => {
     if (accessToken) {
-      config.headers = config.headers ?? {};
-      (config.headers as any).Authorization = `Bearer ${accessToken}`;
+      config.headers = {
+        ...config.headers,
+        Authorization: `Bearer ${accessToken}`,
+      };
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
+
 
 // Response interceptor
 api.interceptors.response.use(
@@ -45,7 +53,7 @@ api.interceptors.response.use(
       | (AxiosRequestConfig & { _retry?: boolean })
       | undefined;
 
-    if (!originalRequest) {
+    if (!originalRequest || !error.response) {
       return Promise.reject(error);
     }
 
@@ -53,7 +61,7 @@ api.interceptors.response.use(
     if (
       error.response?.status !== 401 ||
       originalRequest._retry ||
-      originalRequest.url?.includes("/auth/refresh")
+      originalRequest.url?.includes("refresh")
     ) {
       return Promise.reject(error);
     }
@@ -62,7 +70,7 @@ api.interceptors.response.use(
 
     try {
       if (!refreshPromise) {
-        refreshPromise = api
+        refreshPromise = refreshClient
           .get("/api/v1/user/auth/refresh")
           .then((res) => {
             const newToken = res.data?.accessToken;
@@ -77,8 +85,10 @@ api.interceptors.response.use(
 
       const newToken = await refreshPromise;
 
-      originalRequest.headers = originalRequest.headers ?? {};
-      (originalRequest.headers as any).Authorization = `Bearer ${newToken}`;
+      originalRequest.headers = {
+        ...originalRequest.headers,
+        Authorization: `Bearer ${newToken}`,
+      };
 
       return api(originalRequest);
     } catch (err) {
@@ -91,10 +101,7 @@ api.interceptors.response.use(
 
 export default api;
 
-/* ======================
-   Optional helpers
-====================== */
-
+/* ================ Optional helpers ============== */
 export const GET = <T = any>(
   url: string,
   config?: AxiosRequestConfig

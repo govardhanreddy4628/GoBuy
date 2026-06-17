@@ -1,9 +1,7 @@
 import addressModel from "../models/addressModal.js";
 import { Request, Response } from "express";
 
-/* =============================
-   GET USER ADDRESSES
-============================= */
+/* =============== GET MY ADDRESSES ================= */
 export const getUserAddresses = async (req: Request, res: Response) => {
   try {
     const userId = req.user?._id;
@@ -19,10 +17,24 @@ export const getUserAddresses = async (req: Request, res: Response) => {
   }
 };
 
+/* =============== GET USER ADDRESSES ================= */
+export const getAddressByUser = async (req:Request, res:Response) => {
+  try {
+    const { userId } = req.params;
+    const address = await addressModel.find({ userId });
 
-/* =============================
-   ADD ADDRESS (MAX 5 LIMIT)
-============================= */
+    res.status(200).json({
+      success: true,
+      data: address,
+    });
+  } catch (error) {
+    console.error("Get Address Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+
+/* =========== ADD ADDRESS (MAX 5 LIMIT) ========== */
 export const addAddress = async (req: Request, res: Response) => {
   try {
     const userId = req.user?._id;
@@ -51,9 +63,7 @@ export const addAddress = async (req: Request, res: Response) => {
 };
 
 
-/* =============================
-   DELETE ADDRESS (SECURE)
-============================= */
+/* ============= DELETE ADDRESS (SECURE) ================ */
 export const deleteAddress = async (req: Request, res: Response) => {
   try {
     const userId = req.user?._id;
@@ -80,9 +90,7 @@ export const deleteAddress = async (req: Request, res: Response) => {
 };
 
 
-/* =============================
-   EDIT ADDRESS (SECURE FIX)
-============================= */
+/* ============== EDIT ADDRESS (SECURE FIX) ================== */
 export const editAddress = async (req: Request, res: Response) => {
   try {
     const userId = req.user?._id;

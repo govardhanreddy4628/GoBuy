@@ -31,7 +31,7 @@ const Payment = () => {
   const { amount: initialAmount, orderId } = location.state || {};
 
   const [amount, setAmount] = useState<number>(initialAmount || 0);
-  const merchantName = "Your Store";
+  const merchantName = "GoBuy Store";
 
   const [step, setStep] = useState<PaymentStep>("gateway");
 
@@ -110,8 +110,8 @@ const Payment = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-phonepe-dark p-4">
-      <div className="w-full max-w-[420px] min-h-[700px] bg-phonepe-surface rounded-2xl overflow-hidden shadow-2xl flex flex-col relative">
+    <div className="flex h-auto items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+  <div className="w-full max-w-[420px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
 
         {step === "gateway" && (
           <PhonepeGateway

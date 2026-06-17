@@ -8,7 +8,6 @@ const BulkDelete = ({ selected }: BulkDeleteProps) => {
   return (
     <DeleteDialog
       selectedIds={selected}
-      deleteUrl="/api/customers/bulk-delete"
       resourceName="customer(s)"
       trigger={
         <button

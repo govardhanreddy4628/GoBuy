@@ -737,6 +737,34 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 };
 
 
+export const getOrdersByUser = async (req:Request, res:Response) => {
+  try {
+    const { userId } = req.params;
+
+    const orders = await Order.find({ userId })
+      .sort({ createdAt: -1 });
+
+    const formattedOrders = orders.map((o) => ({
+      id: o._id,
+      orderId: o.orderId,
+      totalItems: o.totalItems,
+      totalAmount: o.totalAmount,
+      subTotalAmount: o.subTotalAmount,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: formattedOrders,
+    });
+  } catch (error) {
+    console.error("Get Orders Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+
 // ✅ UPDATE ORDER STATUS (ADMIN)
 // export const updateOrderStatus = async (req: Request, res: Response) => {
 //   const { orderId } = req.params;

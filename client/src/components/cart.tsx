@@ -34,7 +34,7 @@ const Cart = () => {
   };
 
   return (
-    <section className="w-full bg-gray-50 dark:bg-gray-800">
+    <section className="w-full min-h-screen bg-gray-50 dark:bg-gray-800">
       <div className="py-5 max-w-[95%] lg:max-w-[90%] mx-auto pb-10">
         <div className="flex flex-col lg:flex-row gap-5 items-start">
 
@@ -46,7 +46,7 @@ const Cart = () => {
               </h2>
               <p className="text-gray-600 dark:text-gray-400 text-sm">
                 There are{" "}
-                <span className="font-bold text-primary">
+                <span className="font-bold text-red-500">
                   {cartItems.length}
                 </span>{" "}
                 products in your cart

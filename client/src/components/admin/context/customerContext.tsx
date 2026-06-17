@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Customer } from "../types/customers";
 
-
 type CustomerContextType = {
   customers: Customer[];
   loading: boolean;

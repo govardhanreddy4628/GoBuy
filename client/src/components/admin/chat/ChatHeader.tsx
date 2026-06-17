@@ -9,10 +9,10 @@ interface ChatHeaderProps {
   isOnline?: boolean;
   isGroup?: boolean;
   memberCount?: number;
-  avatar?: string;
+  chatAvatar?: string;
 }
 
-export function ChatHeader({ chatName, isOnline, isGroup, memberCount, avatar }: ChatHeaderProps) {
+export function ChatHeader({ chatName, isOnline, isGroup, memberCount, chatAvatar }: ChatHeaderProps) {
   const handleCall = () => {
     toast({
       title: "Voice Call",
@@ -60,7 +60,7 @@ export function ChatHeader({ chatName, isOnline, isGroup, memberCount, avatar }:
       <div className="flex items-center gap-3">
         <div className="relative">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={avatar} />
+            <AvatarImage src={chatAvatar} />
             <AvatarFallback className="bg-primary text-primary-foreground">
               {isGroup ? (
                 <Users className="h-5 w-5" />

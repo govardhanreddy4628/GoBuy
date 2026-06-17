@@ -4,7 +4,19 @@ interface IUser extends Document {
   fullName: string;
   email: string;
   password: string;
-  phoneNumber: number;
+  phoneNumber: {
+  type: String,
+  default: "",
+},
+
+
+//   phoneNumber: {
+//   type: String,
+//   validate: {
+//     validator: (v: string) => /^[0-9]{10}$/.test(v),
+//     message: "Invalid phone number",
+//   },
+// };
 
   authProvider: "custom" | "google";
   googleId?: string | null;

@@ -2,15 +2,7 @@ import { format } from "date-fns";
 import { cn } from "../../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../ui/avatar";
 
-interface Message {
-  id: string;
-  content: string;
-  timestamp: Date;
-  isOwn: boolean;
-  senderName?: string;
-  senderAvatar?: string;
-  isRead?: boolean;
-}
+
 
 interface MessageBubbleProps {
   message: Message;
@@ -69,7 +61,7 @@ export function MessageBubble({
             bubbleTailClass
           )}
         >
-          <p className="text-sm leading-relaxed">{message.content}</p>
+          <p className="text-sm leading-relaxed">{message.text}</p>
         </div>
 
         {/* Timestamp and read status */}
@@ -80,7 +72,7 @@ export function MessageBubble({
           )}
         >
           <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-            {format(message.timestamp, "HH:mm")}
+            {format(message.createdAt, "HH:mm")}
           </span>
           {message.isOwn && (
             <div

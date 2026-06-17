@@ -106,11 +106,8 @@ const Hero = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         {[
                             "https://rukminim1.flixcart.com/fk-p-flap/1040/560/image/2e5c9cfcf2dc8e71.jpg?q=60",
-                            "https://rukminim1.flixcart.com/fk-p-flap/1040/560/image/c5d0453a8ad30643.jpg?q=60",
-                            "https://rukminim1.flixcart.com/fk-p-flap/1040/560/image/4b01f2e6361d46c4.png?q=60",
                             "https://rukminim1.flixcart.com/fk-p-flap/1040/560/image/c03b479f4ce13271.jpg?q=60",
-                            "https://rukminim1.flixcart.com/fk-p-flap/1040/560/image/58d6d6db07978e56.jpg?q=60",
-                            "https://rukminim2.flixcart.com/fk-p-flap/1040/560/image/c0381ba1a743d06f.jpg?q=60",
+                            "https://rukminim1.flixcart.com/fk-p-flap/1040/560/image/4b01f2e6361d46c4.png?q=60",
                         ].map((src, idx) => (
                             <div key={idx} className="overflow-hidden rounded-lg">
                                 <img
@@ -126,15 +123,12 @@ const Hero = () => {
 
                 {/* <ProductsSlider handleClickOpen={handleClickOpen} headerName="New Arrivals" route=""/>
                 <ProductsSlider handleClickOpen={handleClickOpen} headerName="Best Selling Products" route=""/>
-                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Featured Products" route=""/>
-                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Limited Edition" route=""/>
-                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Recently Viewed Products" route=""/> */}
+                <ProductsSlider handleClickOpen={handleClickOpen} headerName="Limited Edition" route=""/> */}
 
 
                 <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Top Rated Products" route="top-rated" />
                 <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Featured Products" route="featured" />
                 <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Recently Viewed Products" route="recently-viewed" />
-                <ProductsSlider handleClickOpen={handleClickOpen} handleOpenAiChat={handleOpenAiChat} headerName="Top Rated Products" route="top-rated" />
                 <BlogSection />
             </section >
 

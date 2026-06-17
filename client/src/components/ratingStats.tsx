@@ -264,7 +264,7 @@ const RatingStats: React.FC<RatingStatsProps> = ({
           value={reviewMessage}
           onChange={(e) => setReviewMessage(e.target.value)}
           placeholder="Write a feedback"
-          className="w-full p-2 pb-10 border border-gray-300 dark:border-gray-600 rounded-md 
+          className="w-full p-2 pb-6 border border-gray-300 dark:border-gray-600 rounded-md 
           bg-white dark:bg-gray-900 text-black dark:text-white
           focus:outline-none focus:ring-2 focus:ring-green-400"
         />
@@ -294,7 +294,7 @@ const RatingStats: React.FC<RatingStatsProps> = ({
             accept="image/png, image/jpeg, image/webp"
             multiple
             onChange={handleFileChange}
-            className="mt-3 text-gray-700 dark:text-gray-300 file:bg-red-500 file:text-white file:border-0 file:px-3 file:py-1 file:rounded"
+            className="mt-2 text-gray-700 dark:text-gray-300 file:bg-red-500 file:text-white file:border-0 file:px-3 file:py-1 file:rounded"
           />
         </div>
 

@@ -11,8 +11,9 @@ import { Input } from "../../../ui/input";
 import { ScrollArea } from "../../../ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../ui/avatar";
 import { useAuth } from '../../../context/authContext';
-import { current } from '@reduxjs/toolkit';
 import { getAccessToken } from '../../../api/api_utility';
+import { MessageFromApi } from '../types/chat/message.api';
+import { ChatFromApi } from '../types/chat/chat.api';
 
 const EVENTS = {
   NEW_MESSAGE: "NEW_MESSAGE",
@@ -26,30 +27,35 @@ const EVENTS = {
 interface Message {
   id: string;
   chatID?: string;
-  content: string;
-  timestamp: Date;
+  text?: string;
+  media?: string;
+  type?: string; // ✅ REQUIRED
+  location?: { address?: string }; // ✅ REQUIRED
+  contact?: { name?: string }; // ✅ REQUIRED
   isOwn: boolean;
   senderName?: string;
   senderAvatar?: string;
   isRead?: boolean;
-  status?: "sending" | "sent" | "failed";
+  status?: "sent" | "delivered" | "read" | "failed";
+  createdAt: Date;
 }
 export interface Chat {
   id: string;
-  name: string;
+  chatName: string;
   memberCount?: number;
   lastMessage: string;
-  timestamp: string;
   unreadCount: number;
   isOnline: boolean;
-  avatar?: string;
+  chatAvatar?: string;
   isGroup: boolean;
   members?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface User {
   _id: string;
-  name: string;
+  fullName: string;
   avatar?: string;
   isOnline?: boolean;
 }
@@ -68,7 +74,8 @@ const Chat = () => {
 
   const { user } = useAuth();
   console.log(user)
-  const currentUserId = user?.id as string | undefined;
+  const currentUserId = (user?._id || user?.id) as string | undefined;
+ 
 
   // Pending chat = a temp chat that has no DB id yet
   const [pendingChat, setPendingChat] = useState<{
@@ -84,13 +91,13 @@ const Chat = () => {
     if (pendingChat && selectedChatId === pendingChat.id) {
       return {
         id: pendingChat.id,
-        name: pendingChat.name,
+        chatName: pendingChat.name,
         lastMessage: "",
-        timestamp: new Date().toISOString(),
         unreadCount: 0,
         isOnline: false,
         isGroup: pendingChat.members.length > 2,
         members: pendingChat.members,
+        createdAt: new Date().toISOString(),
       } as Chat;
     }
     return null;
@@ -109,7 +116,7 @@ const Chat = () => {
 
   console.log(isConnected)
 
-  function getLastMessagePreview(message: any): string {
+  function getLastMessagePreview(message: Message): string {
     if (!message) return "";
 
     switch (message.type) {
@@ -159,19 +166,19 @@ const Chat = () => {
       try {
         const res = await fetch(`${import.meta.env.VITE_BACKEND_URL_LOCAL}/api/v1/chat`, { credentials: "include", headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
+        console.log(data)
 
-        const formatted: Chat[] = data.map((chat: any) => ({
-          id: chat._id,
-          name: chat.isGroup
-            ? chat.chatName
-            : chat.members.find((m: any) => m._id !== currentUserId)?.fullName ?? "Unknown",
-          lastMessage: getLastMessagePreview(chat.lastMessage),
-          timestamp: chat.updatedAt,
-          unreadCount: 0,
-          isOnline: false,
-          avatar: chat.members.find((m: any) => m._id !== currentUserId)?.avatar,
+        const formatted: Chat[] = data.map((chat: ChatFromApi) => ({
+          id: chat.id,
+          chatName: chat.chatName,
+          lastMessage: chat.lastMessagePreview,
+          unreadCount: chat.unreadCount,
+          chatAvatar: chat.chatAvatar,
           isGroup: chat.isGroup,
-          members: chat.members.map((m: any) => m._id),
+          members: chat.members?.map((m: any) => m._id),
+          createdAt: chat.createdAt,
+          updatedAt: chat.updatedAt || chat.createdAt,
+          isOnline: false
         }));
 
         setChats(formatted);
@@ -183,27 +190,7 @@ const Chat = () => {
     fetchChats();
   }, [currentUserId, token]);
 
-  function getMessageContent(msg: any): string {
-    switch (msg.type) {
-      case "text":
-        return msg.text || "";
 
-      case "image":
-      case "video":
-      case "audio":
-      case "document":
-        return msg.media?.url || "";
-
-      case "location":
-        return `📍 ${msg.location?.address || "Location"}`;
-
-      case "contact":
-        return `👤 ${msg.contact?.name || "Contact"}`;
-
-      default:
-        return "";
-    }
-  }
   // fetch messages when a real chat is selected
   useEffect(() => {
     if (!selectedChatId || selectedChatId.startsWith("temp")) return;
@@ -215,15 +202,24 @@ const Chat = () => {
         );
         const data = await res.json();
 
-        const formatMessage: Message[] = data.map((msg: any) => ({
+        const formatMessage: Message[] = data.map((msg: MessageFromApi) => ({
+
           id: msg._id,
-          content: getMessageContent(msg),
-          timestamp: new Date(msg.createdAt),
+          chatID: msg.chatId,
+          text: msg.text,
+          media: msg.media,
+          type: msg.type,
           isOwn: msg.sender?._id === currentUserId,
           senderName: msg.sender?.fullName,
           senderAvatar: msg.sender?.avatar,
-          isRead: msg.readBy?.includes(currentUserId),
-          status: "sent" as const,
+
+          // ✅ FIX readBy
+          isRead: msg.readBy?.some(
+            (r) => (typeof r.user === "string" ? r.user : r.user._id) === currentUserId
+          ),
+
+          status: msg.status,
+          createdAt: new Date(msg.createdAt),
         }));
 
         setMessages(prev => ({ ...prev, [selectedChatId]: formatMessage }));
@@ -244,10 +240,12 @@ const Chat = () => {
       console.error('Backend URL is not defined.');
       return;
     }
-    if (!currentUserId) {
-      console.error('User ID is not available.');
-      return;
-    }
+    // if (!currentUserId) {
+    //   console.error('User ID is not available.');
+    //   return;
+    // }
+
+    if (!currentUserId) return; // silently wait
 
     socketRef.current = io(backendUrl + "/admin", {
       auth: {
@@ -288,13 +286,15 @@ const Chat = () => {
 
       const formatted: Message = {
         id: message._id,
-        content: message.content,
-        timestamp: new Date(message.createdAt),
+        text: message.text,
+        type: message.type,
+        media: message.media,
         isOwn: message.sender._id === currentUserId,
         senderName: message.sender.fullName,
         senderAvatar: message.sender.avatar,
         //isRead: isActiveChat,
         status: "sent",
+        createdAt: new Date(message.createdAt)
       };
 
       // Update messages — migrate any pending temp entry to real chatId
@@ -337,18 +337,16 @@ const Chat = () => {
           // New chat arriving (e.g. someone messaged us first)
           const newChat: Chat = {
             id: realChatId,
-            name:
+            chatName:
               incomingChat?.chatName ||
               message.sender.fullName ||
               "Unknown",
-            lastMessage: message.content,
-            timestamp: new Date().toISOString(),
+            lastMessage: message.text || "New message",
             unreadCount: 1,
             isOnline: false,
             isGroup: incomingChat?.isGroup ?? false,
-            members: incomingChat?.members?.map((m: any) =>
-              m._id ?? m
-            ),
+            members: incomingChat?.members?.map((m: any) => m._id ?? m),
+            createdAt: incomingChat.createdAt,
           };
           return [newChat, ...prev];
         }
@@ -358,8 +356,8 @@ const Chat = () => {
           c.id === realChatId
             ? {
               ...c,
-              lastMessage: message.content,
-              timestamp: new Date().toISOString(),
+              lastMessage: message.text || "New message",
+              updatedAt: new Date().toISOString(),
               // unread only for non-active chats; handled below via selectedChatId
             }
             : c
@@ -512,7 +510,7 @@ const Chat = () => {
   // 🔍 Filtered users based on search
   const filteredUsers = useMemo(() => {
     return allUsers.filter((user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase())
+      user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [searchQuery, allUsers]);
 
@@ -559,8 +557,7 @@ const Chat = () => {
 
       // Create temp chat (no API call — chat created on first message)
       const tempId = `temp-${Date.now()}`;
-      const contactName =
-        contacts[0]?.name ?? "Unknown User";
+      const contactName = contacts[0]?.fullName ?? "Unknown User";
 
       setPendingChat({ id: tempId, name: contactName, members: [currentUserId!, memberIds[0]] });
       setMessages((prev) => ({ ...prev, [tempId]: [] }));
@@ -658,8 +655,14 @@ const Chat = () => {
 
   // ✅ SEND MESSAGE (SOCKET ONLY)
   const handleSendMessage = useCallback(
-    (content: string) => {
-      if (!selectedChatId || !socketRef.current || !content.trim()) return;
+    (payload: { text?: string; file?: File | null }) => {
+      if (!selectedChatId || !socketRef.current) return;
+
+      const text = payload.text?.trim();
+      const file = payload.file;
+
+      // ❌ CASE: nothing
+      if (!text && !file) return;
 
       // Get members from selected chat or pending chat
       let members: string[] = [];
@@ -680,14 +683,24 @@ const Chat = () => {
 
       // Optimistic message
       const tempMsgId = `temp-msg-${Date.now()}`;
+
+      const messagePayload = {
+        text: text || undefined,
+        media: file ? URL.createObjectURL(file) : undefined,
+        type: file ? "image" : "text", // improve later for other types
+      };
+
       const optimistic: Message = {
         id: tempMsgId,
-        content: content.trim(),
-        timestamp: new Date(),
+        text: messagePayload.text,
+        media: messagePayload.media,
+        type: messagePayload.type,
+        createdAt: new Date(),
         isOwn: true,
         senderName: user?.fullName ?? "You",
-        status: "sending",
+        status: "sent",
       };
+
 
       setMessages((prev) => ({
         ...prev,
@@ -698,8 +711,8 @@ const Chat = () => {
       socketRef.current.emit(EVENTS.NEW_MESSAGE, {
         chatId: selectedChatId.startsWith("temp") ? null : selectedChatId,
         members: otherMembers,
-        message: content.trim(),
-        groupName: selectedChat?.isGroup ? selectedChat.name : undefined,
+        message: messagePayload,
+        groupName: selectedChat?.isGroup ? selectedChat.chatName : undefined,
       });
     },
     [selectedChatId, selectedChat, pendingChat, currentUserId, user]
@@ -711,6 +724,8 @@ const Chat = () => {
     () => (selectedChatId ? (messages[selectedChatId] ?? []) : []),
     [messages, selectedChatId]
   );
+
+  console.log(chats.map(c => c.id));
 
   return <div className="h-[calc(100vh-4rem)] flex bg-background">
     <ChatSidebar
@@ -812,9 +827,9 @@ const Chat = () => {
                       onClick={() => toggleUser(user._id)}
                     >
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.avatar} alt={user.name} />
+                        <AvatarImage src={user.avatar} alt={user.fullName} />
                         <AvatarFallback>
-                          {user.name
+                          {user.fullName
                             .split(" ")
                             .map((n) => n[0])
                             .join("")
@@ -822,7 +837,7 @@ const Chat = () => {
                         </AvatarFallback>
                       </Avatar>
 
-                      <div className="flex-1"><p className="text-sm font-medium text-foreground truncate">{user.name}</p></div>
+                      <div className="flex-1"><p className="text-sm font-medium text-foreground truncate">{user.fullName}</p></div>
                       {isSelected && (<span className="text-primary font-semibold text-xs"> ✓</span>)}
                     </div>
                   );
