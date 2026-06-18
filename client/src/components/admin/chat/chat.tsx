@@ -60,7 +60,6 @@ interface User {
   isOnline?: boolean;
 }
 
-
 const Chat = () => {
   // ✅ Infer the correct type from the io() return
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
@@ -75,7 +74,7 @@ const Chat = () => {
   const { user } = useAuth();
   console.log(user)
   const currentUserId = (user?._id || user?.id) as string | undefined;
- 
+
 
   // Pending chat = a temp chat that has no DB id yet
   const [pendingChat, setPendingChat] = useState<{
@@ -175,7 +174,7 @@ const Chat = () => {
           unreadCount: chat.unreadCount,
           chatAvatar: chat.chatAvatar,
           isGroup: chat.isGroup,
-          members: chat.members?.map((m: any) => m._id),
+          members: chat.members,
           createdAt: chat.createdAt,
           updatedAt: chat.updatedAt || chat.createdAt,
           isOnline: false
@@ -231,6 +230,14 @@ const Chat = () => {
     fetchMessages();
   }, [selectedChatId, currentUserId, token]);
 
+  useEffect(() => {
+    if (!selectedChatId || !socketRef.current) return;
+
+    socketRef.current.emit("MARK_SEEN", {
+      chatId: selectedChatId,
+      userId: currentUserId,
+    });
+  }, [selectedChatId]);
 
   // ✅ SOCKET CONNECTION
   useEffect(() => {
@@ -275,11 +282,6 @@ const Chat = () => {
       setIsConnected(false);
     });
 
-    sock.emit("MARK_SEEN", {
-      chatId: selectedChatId,
-      userId: currentUserId,
-    });
-
     // Listen for icoming messages or Receive message
     sock.on(EVENTS.NEW_MESSAGE, ({ chatId, message, chat: incomingChat }) => {
       const realChatId = chatId.toString();
@@ -289,9 +291,9 @@ const Chat = () => {
         text: message.text,
         type: message.type,
         media: message.media,
-        isOwn: message.sender._id === currentUserId,
-        senderName: message.sender.fullName,
-        senderAvatar: message.sender.avatar,
+        isOwn: message.sender?._id === currentUserId,
+        senderName: message.sender?.fullName,
+        senderAvatar: message.sender?.avatar,
         //isRead: isActiveChat,
         status: "sent",
         createdAt: new Date(message.createdAt)
@@ -303,18 +305,22 @@ const Chat = () => {
 
         for (const [key, val] of Object.entries(prev)) {
           if (key.startsWith("temp")) {
-            // Replace temp key with real chatId
+            // move only NON-duplicate messages
             next[realChatId] = [
               ...(next[realChatId] ?? []),
-              ...val.filter((m) => !m.id.startsWith("temp")), // drop optimistic dupes
+              ...val.filter(
+                (m) =>
+                  !m.id.startsWith("temp") &&
+                  !next[realChatId]?.some((e) => e.id === m.id)
+              ),
             ];
           } else {
             next[key] = val;
           }
         }
-
-        // Deduplicate then append
         const existing = next[realChatId] ?? [];
+
+        // 🚀 FINAL DEDUP
         if (existing.some((m) => m.id === formatted.id)) return next;
         next[realChatId] = [...existing, formatted];
         return next;
@@ -384,7 +390,7 @@ const Chat = () => {
       });
     });
 
-    // ── Online users ────────────────────────────────────────────────────────
+    // ── Online users ──────────────────
     sock.on(EVENTS.ONLINE_USERS, (users: string[]) => {
       setOnlineUsers(users);
       setChats((prev) =>
@@ -451,6 +457,7 @@ const Chat = () => {
     prevChatRef.current = selectedChatId;
   }, [selectedChatId]); // eslint-disable-line react-hooks/exhaustive-deps  
 
+  // fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       setLoadingUsers(true);
@@ -462,6 +469,7 @@ const Chat = () => {
         }
 
         const data = await res.json();
+        console.log(data)
 
         setAllUsers(data.users); // make sure backend returns array
       } catch (error) {
@@ -510,7 +518,7 @@ const Chat = () => {
   // 🔍 Filtered users based on search
   const filteredUsers = useMemo(() => {
     return allUsers.filter((user) =>
-      user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+      user?.fullName?.toLowerCase().includes(searchQuery?.toLowerCase())
     );
   }, [searchQuery, allUsers]);
 
@@ -686,7 +694,7 @@ const Chat = () => {
 
       const messagePayload = {
         text: text || undefined,
-        media: file ? URL.createObjectURL(file) : undefined,
+        media: file ? { url: URL.createObjectURL(file) } : undefined,
         type: file ? "image" : "text", // improve later for other types
       };
 

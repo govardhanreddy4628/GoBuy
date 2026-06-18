@@ -46,13 +46,6 @@ export function MessagesList({ messages }: MessagesListProps) {
                 isGrouped={isGroupedMessage(message, prevMessage)}
               />
 
-              {message.isOwn && (
-                <span className="text-xs ml-2">
-                  {message.status === "sending" && "⏳"}
-                  {message.status === "sent" && "✔️"}
-                  {message.status === "failed" && "❌"}
-                </span>
-              )}
             </div>
           );
         })}

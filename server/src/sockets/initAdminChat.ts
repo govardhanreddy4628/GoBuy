@@ -121,13 +121,14 @@ export function initAdminChat(io: Namespace) {
               members: { $all: [user._id, otherUserId], $size: 2 },
             });
 
-            const otherUser = await UserModel.findById(otherUserId).select("fullName");
-            console.log(otherUser)
+            const otherUser =
+              await UserModel.findById(otherUserId).select("fullName");
+            console.log(otherUser);
             if (!chat) {
               chat = await ChatModel.create({
                 chatName: otherUser?.fullName || "Direct Message",
                 isGroup: false,
-                members: [user._id, otherUserId],
+                members: [user._id.toString(), otherUserId.toString()],
               });
             }
           }
@@ -184,10 +185,12 @@ export function initAdminChat(io: Namespace) {
           chatId: chat._id.toString(),
           message: newMessage,
           chat: {
-            _id: chat._id,
+            _id: chat._id.toString(),
             chatName: chat.chatName,
             isGroup: chat.isGroup,
-            members: chat.members,
+            members: chat.members.map((m: any) =>
+              m._id ? m._id.toString() : m.toString(),
+            ),
           },
         });
 

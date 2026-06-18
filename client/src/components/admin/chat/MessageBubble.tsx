@@ -54,11 +54,11 @@ export function MessageBubble({
         {/* Message bubble */}
         <div
           className={cn(
-            "relative px-4 py-2 max-w-full break-words shadow-sm message-bubble",
+            "relative px-4 py-2 max-w-full break-words shadow-sm",
             message.isOwn
-              ? "bg-green-100 text-black rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-md"
-              : "bg-white text-black rounded-tr-2xl rounded-tl-2xl rounded-br-2xl rounded-bl-md",
-            bubbleTailClass
+              ? "bg-blue-500 text-white rounded-2xl rounded-br-sm"
+              : "bg-gray-100 text-black rounded-2xl rounded-bl-sm",
+            "transition-all duration-200"
           )}
         >
           <p className="text-sm leading-relaxed">{message.text}</p>
@@ -71,8 +71,11 @@ export function MessageBubble({
             message.isOwn ? "flex-row-reverse" : "flex-row"
           )}
         >
-          <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-            {format(message.createdAt, "HH:mm")}
+          <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+            {new Date(message.createdAt!).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </span>
           {message.isOwn && (
             <div

@@ -14,7 +14,7 @@ const chatSchema = new mongoose.Schema(
     }],
     groupCreator: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    groupName: String,
+    // groupName: String,
     groupIcon: { url: String, public_id: String},
     lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
     unreadCounts: [
