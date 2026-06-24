@@ -24,14 +24,19 @@ const messageSchema = new mongoose.Schema(
 
     text: String,
 
-    media: {
-      url: String,
-      public_id: String,
-      mimeType: String,
-      size: Number,
-      duration: Number, // audio/video
-      thumbnail: String,
-    },
+    media: [
+      {
+        url: String,
+        public_id: String,
+        mimeType: String,
+        type: String,
+        size: Number,
+        duration: Number,
+        thumbnail: String,
+      },
+    ],
+
+    isMixedMedia: { type: Boolean, default: false },
 
     location: {
       lat: Number,
@@ -83,47 +88,21 @@ const messageSchema = new mongoose.Schema(
 
     edited: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-export const Message = mongoose.models.Message || mongoose.model("Message", messageSchema)
-
-
-
-
-//export default mongoose.model("Message", messageSchema);
-
+export const Message =
+  mongoose.models.Message || mongoose.model("Message", messageSchema);
 
 
 
 
 
-
-// import mongoose from "mongoose";
-
-// const messageSchema = new mongoose.Schema({
-//   userId: { type: String, required: true, index: true },
-//   sender: { type: String, enum: ["user", "AI", "Admin", "System"], required: true },
-//   message: { type: String, required: true },
-//   chatType: String,  // e.g., 'ai' or 'human'
-
-// },{ timestamps: true });
-
-// export default mongoose.model("Message", messageSchema);
-
-
-
-
-
-
-
-
-
-// import mongoose from "mongoose";
-
-// const messageSchema = new mongoose.Schema({    
+  
+  // const messageSchema = new mongoose.Schema({
 //     sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true},
 //     chat: { type: mongoose.Schema.Types.ObjectId, ref: "Chat", required: true},
+//     chatType: String,  // e.g., 'ai' or 'human'
 //     content: { type: String, trim: true, },
 //     attachments: [
 //       {
@@ -136,8 +115,5 @@ export const Message = mongoose.models.Message || mongoose.model("Message", mess
 //   { timestamps: true }
 // )
 
-// export const Message = mongoose.models.Message || mongoose.model("Message", messageSchema)
-
-
-
+// export default mongoose.model("Message", messageSchema);
 

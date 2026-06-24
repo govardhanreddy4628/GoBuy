@@ -15,6 +15,7 @@ export interface Category {
   _id?: string; // MongoDB id
   id?: string;  // Normalized id for frontend
   name: string;
+  slug?: string;
   description?: string;
   image?: ImageMetadata; // ✅ Use the new type here
   parentCategoryId?: string | null;

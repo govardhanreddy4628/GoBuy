@@ -75,3 +75,54 @@ export const deleteFilesFromCloudinary = async (publicIds: string[]) => {
     console.warn("Cloudinary destroy error:", err);
   }
 };
+
+
+
+export async function uploadChatMedia(
+  file: Express.Multer.File,
+  folder = "chat"
+) {
+  try {
+    const mimeType = file.mimetype;
+
+    const getType = (mime: string) => {
+      if (mime.startsWith("image")) return "image";
+      if (mime.startsWith("video")) return "video";
+      if (mime.startsWith("audio")) return "audio";
+      return "document";
+    };
+
+    const resourceType = mimeType.startsWith("video")
+      ? "video"
+      : mimeType.startsWith("audio")
+      ? "video"
+      : "image";
+
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder,
+      resource_type: resourceType,
+    });
+
+    fs.unlinkSync(file.path);
+
+    return {
+      url: result.secure_url,
+      public_id: result.public_id,
+      mimeType,
+      type: getType(mimeType), // ✅ IMPORTANT
+      size: result.bytes,
+      duration: result.duration || null,
+      thumbnail: result.secure_url,
+    };
+  } catch (error) {
+    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    throw error;
+  }
+}
+
+
+export const uploadMultipleChatMedia = async (
+  files: Express.Multer.File[]
+) => {
+  return Promise.all(files.map((file) => uploadChatMedia(file)));
+};

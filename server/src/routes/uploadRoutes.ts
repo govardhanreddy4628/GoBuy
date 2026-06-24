@@ -1,7 +1,8 @@
 import {Router} from "express";
 import { deleteImageController, uploadImages } from "../controllers/uploadImagesController.js";
 import { uploadCategoryImage, getSignedUploadParams } from "../controllers/uploadImagesController.js";
-import { uploadSingle } from "../middleware/multer.js";
+import { uploadMultipleMedia, uploadSingle } from "../middleware/multer.js";
+import { uploadChatMediaController } from "../controllers/chatController.js";
 
 const uploadRouter = Router();
 
@@ -22,5 +23,10 @@ uploadRouter.delete("/delete", asyncHandler(deleteImageController));
 // Backend single image upload (admin/category)
 uploadRouter.post("/category", uploadSingle, asyncHandler(uploadCategoryImage));
 
+uploadRouter.post(
+  "/chat-media",
+  uploadMultipleMedia,
+  uploadChatMediaController
+);
 
 export default uploadRouter;

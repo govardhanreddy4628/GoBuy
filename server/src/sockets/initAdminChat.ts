@@ -48,9 +48,16 @@ export function initAdminChat(io: Namespace) {
 
     socket.on(NEW_MESSAGE, async ({ chatId, members, message, groupName }) => {
       try {
-        const { text, media, type } = message || {};
+        const {
+          text,
+          media = [],
+          type,
+          isMixedMedia,
+          clientId,
+        } = message || {};
+
         // Validate message
-        if (!text?.trim() && !media) {
+        if (!text?.trim() && (!media || media.length === 0)) {
           return socket.emit("error", { message: "Message cannot be empty" });
         }
 
@@ -75,21 +82,22 @@ export function initAdminChat(io: Namespace) {
 
         // CASE 2: No valid chat found → find or create chat
         if (!chat) {
-          const allMembers = [user._id.toString(), ...members];
+          const allMembers = [user._id.toString(), ...(members || [])];
+          const uniqueMembers = [...new Set(allMembers)];
 
           // 🔥 GROUP CHAT (more than 1 recipient)
-          if (members.length > 1) {
+          if (uniqueMembers.length > 2) {
             // Optional: prevent duplicate group
             chat = await ChatModel.findOne({
               isGroup: true,
-              members: { $all: allMembers, $size: allMembers.length },
+              members: { $all: uniqueMembers, $size: uniqueMembers.length },
             });
 
             if (!chat) {
               chat = await ChatModel.create({
-                chatName: groupName,
+                chatName: groupName || "Group",
                 isGroup: true,
-                members: allMembers,
+                members: uniqueMembers,
               });
 
               console.log("✅ Created new GROUP chat:", chat._id);
@@ -121,12 +129,8 @@ export function initAdminChat(io: Namespace) {
               members: { $all: [user._id, otherUserId], $size: 2 },
             });
 
-            const otherUser =
-              await UserModel.findById(otherUserId).select("fullName");
-            console.log(otherUser);
             if (!chat) {
               chat = await ChatModel.create({
-                chatName: otherUser?.fullName || "Direct Message",
                 isGroup: false,
                 members: [user._id.toString(), otherUserId.toString()],
               });
@@ -141,6 +145,7 @@ export function initAdminChat(io: Namespace) {
           text: text?.trim(),
           media,
           type: type || "text",
+          isMixedMedia: isMixedMedia || false,
         });
 
         newMessage = await newMessage.populate("sender", "fullName avatar");
@@ -174,23 +179,38 @@ export function initAdminChat(io: Namespace) {
         // Populate chat members for response
         await chat.populate("members", "_id fullName avatar");
 
-        const membersSockets = getSockets(
-          chat.members.map((m: any) => m._id?.toString() || m.toString()),
-        ).filter((id): id is string => typeof id === "string");
+        const memberIds = chat.members
+          .map((m: any) => {
+            if (!m) return null;
+
+            if (typeof m === "string") return m;
+
+            if (m._id) return m._id.toString();
+
+            return null;
+          })
+          .filter(Boolean);
+
+        const membersSockets = getSockets(memberIds);
 
         console.log("📤 Emitting to sockets:", membersSockets);
 
         // Emit to all members
         io.to(membersSockets).emit(NEW_MESSAGE, {
           chatId: chat._id.toString(),
-          message: newMessage,
+          message: {
+            ...newMessage.toObject(),
+            clientId, // ✅ ADD THIS
+          },
           chat: {
             _id: chat._id.toString(),
-            chatName: chat.chatName,
             isGroup: chat.isGroup,
-            members: chat.members.map((m: any) =>
-              m._id ? m._id.toString() : m.toString(),
-            ),
+            chatName: chat.chatName || null, // only for group
+            members: chat.members.map((m: any) => ({
+              _id: m._id.toString(),
+              fullName: m.fullName,
+              avatar: m.avatar,
+            })),
           },
         });
 

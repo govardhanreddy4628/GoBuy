@@ -9,6 +9,7 @@ import { useAuth } from "../context/authContext";
 import { Box } from "@mui/material";
 import { Product } from "../types/product";
 import SkeletonCard from "./SkeletonProductCard";
+import { GET, POST } from "../api/api_utility";
 
 type Props = {
   handleClickOpen: (product: Product) => void;
@@ -31,30 +32,20 @@ const ProductsSlider = ({
   const { isAuthenticated } = useAuth();
   const { cart, addToCart, updateQuantity, loadingCartItems, getCartKey } = useCart();
 
-  // =========================
-  // ✅ FETCH PRODUCTS (UNIFIED)
-  // =========================
+  // =============== FETCH PRODUCTS (UNIFIED)  ============
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
 
-        // =========================
-        // ✅ CATEGORY BASED
-        // =========================
+        // ============ CATEGORY BASED ============
         if (categorySlug) {
-          const res = await fetch(
-            `http://localhost:8080/api/v1/product/category/${categorySlug}`
-          );
-
-          const data = await res.json();
-          setProducts(data.success ? data.data : []);
+          const res = await GET(`/api/v1/product/category/${categorySlug}`);
+          setProducts(res.data.success ? res.data.data : []);
           return;
         }
 
-        // =========================
-        // ✅ RECENTLY VIEWED
-        // =========================
+        // ============= RECENTLY VIEWED ==============
         if (route === "recently-viewed") {
           if (isAuthenticated) {
             const stored = localStorage.getItem("recentlyViewed");
@@ -89,20 +80,21 @@ const ProductsSlider = ({
               return;
             }
 
-            const res = await fetch(
-              `http://localhost:8080/api/v1/product/by-ids`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ids }),
-              }
-            );
+            // const res = await fetch(
+            //   `http://localhost:8080/api/v1/product/by-ids`,
+            //   {
+            //     method: "POST",
+            //     headers: { "Content-Type": "application/json" },
+            //     body: JSON.stringify({ ids }),
+            //   }
+            // );
+            // const data = await res.json();
 
-            const data = await res.json();
+            const res = await POST(`/api/v1/product/by-ids`, { ids });
 
-            if (data.success) {
+            if (res.data.success) {
               const ordered = ids
-                .map((id) => data.data.find((p: Product) => p._id === id))
+                .map((id) => res.data.data.find((p: Product) => p._id === id))
                 .filter(Boolean);
 
               setProducts(ordered as Product[]);
@@ -112,17 +104,10 @@ const ProductsSlider = ({
           }
         }
 
-        // =========================
-        // ✅ NORMAL ROUTES
-        // =========================
+        // ============ NORMAL ROUTES =============
         else if (route) {
-          const res = await fetch(
-            `http://localhost:8080/api/v1/product/${route}`,
-            { credentials: "include" }
-          );
-
-          const data = await res.json();
-          setProducts(data.success ? data.data : []);
+          const res = await GET(`/api/v1/product/${route}`);
+          setProducts(res.data.success ? res.data.data : []);
         }
       } catch (err) {
         console.error("Failed to fetch products:", err);
@@ -154,13 +139,13 @@ const ProductsSlider = ({
     <div className="categorySwiper my-8">
 
       {(loading || products.length > 0) && (
-  <Box
-    sx={{ width: "95%" }}
-    className="w-full flex justify-between items-center mx-auto pt-4 mb-4"
-  >
-    <h1 className="text-[24px] font-bold">{headerName}</h1>
-  </Box>
-)}
+        <Box
+          sx={{ width: "95%" }}
+          className="w-full flex justify-between items-center mx-auto pt-4 mb-4"
+        >
+          <h1 className="text-[24px] font-bold">{headerName}</h1>
+        </Box>
+      )}
 
       <div className="w-[95%] mx-auto">
         <Swiper
@@ -179,29 +164,29 @@ const ProductsSlider = ({
         >
           {loading
             ? Array.from({ length: 6 }).map((_, i) => (
-                <SwiperSlide key={i}>
-                  <SkeletonCard />
-                </SwiperSlide>
-              ))
+              <SwiperSlide key={i}>
+                <SkeletonCard />
+              </SwiperSlide>
+            ))
             : products.map((product) => {
-                const key = getCartKey(product._id);
-                const item = cart[key];
+              const key = getCartKey(product._id);
+              const item = cart[key];
 
-                return (
-                  <SwiperSlide key={product._id}>
-                    <ProductCard
-                      product={product}
-                      item={item}
-                      handleAdd={handleAdd}
-                      handleIncrease={() => handleIncrease(key)}
-                      handleDecrease={() => handleDecrease(key)}
-                      handleClickOpen={handleClickOpen}
-                      handleOpenAiChat={handleOpenAiChat}
-                      loadingCartItems={loadingCartItems}
-                    />
-                  </SwiperSlide>
-                );
-              })}
+              return (
+                <SwiperSlide key={product._id}>
+                  <ProductCard
+                    product={product}
+                    item={item}
+                    handleAdd={handleAdd}
+                    handleIncrease={() => handleIncrease(key)}
+                    handleDecrease={() => handleDecrease(key)}
+                    handleClickOpen={handleClickOpen}
+                    handleOpenAiChat={handleOpenAiChat}
+                    loadingCartItems={loadingCartItems}
+                  />
+                </SwiperSlide>
+              );
+            })}
         </Swiper>
       </div>
     </div>

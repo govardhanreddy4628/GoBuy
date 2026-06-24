@@ -3,6 +3,7 @@ import { TextField, MenuItem, Select, InputLabel, FormControl, Button, Grid, Typ
 import { Formik, Form, Field, FormikHelpers } from 'formik';
 import * as Yup from 'yup';
 import AccountCircle from '@mui/icons-material/AccountCircle';
+import { SelectChangeEvent } from '@mui/material/Select';
 
 // Mock data for dropdown options
 const countryList: string[] = ["USA", "India", "UK"];
@@ -49,23 +50,23 @@ const AddressForm = () => {
 
   // Handle Organization Type Change
   const handleTypeChange = (
-    event: React.ChangeEvent<{ value: unknown }>,
-    setFieldValue: (field: string, value: unknown) => void
+    event: SelectChangeEvent,
+    setFieldValue: (field: string, value: any) => void
   ) => {
-    const type = event.target.value as string;
+    const type = event.target.value;
     setOrgNames(organizationNames[type] || []);
     setFieldValue("organizationType", type);
-    setFieldValue("organizationName", ''); // Reset organization name when type changes
+    setFieldValue("organizationName", '');
   };
 
   // Handle Country Change
   const handleCountryChange = (
-    event: React.ChangeEvent<{ value: unknown }>,
-    setFieldValue: (field: string, value: unknown) => void
+    event: SelectChangeEvent,
+    setFieldValue: (field: string, value: any) => void
   ) => {
-    const country = event.target.value as string;
+    const country = event.target.value;
     setFieldValue("country", country);
-    setFieldValue("address.state", ''); // Reset state when country changes
+    setFieldValue("address.state", '');
   };
 
   // Validation Schema with Yup

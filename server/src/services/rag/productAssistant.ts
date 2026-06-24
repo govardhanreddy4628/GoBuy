@@ -102,17 +102,6 @@
 //   }
 // };
 
-
-
-
-
-
-
-
-
-
-
-
 // controllers/product/productAssistant.ts
 
 import { Request, Response } from "express";
@@ -137,7 +126,7 @@ export const askProductQuestion = async (req: Request, res: Response) => {
     return res.json({ answer: "⏳ Please wait a moment..." });
   }
   lastCallTime = now;
-  
+
   try {
     // ✅ 1. ALWAYS get selected product
     const selectedProduct = productId
@@ -167,7 +156,7 @@ Description: ${selectedProduct.description}
     if (embeddedQuery.length > 0) {
       const vectorResults = await vectorSearchAggregationPipeline(
         ProductVector,
-        embeddedQuery
+        embeddedQuery,
       );
 
       if (vectorResults.length > 0) {
@@ -179,7 +168,7 @@ Description: ${selectedProduct.description}
 
         const enrichedResults = vectorResults.map((r) => {
           const product = products.find(
-            (p) => p._id.toString() === r.productId.toString()
+            (p) => p._id.toString() === r.productId.toString(),
           );
 
           return {
@@ -193,12 +182,12 @@ Description: ${selectedProduct.description}
         ragContext = enrichedResults
           .map(
             (r) => `
-Similar Product:
-Name: ${r.name}
-Brand: ${r.brand}
-Price: ₹${r.finalPrice}
-Description: ${r.text}
-`
+                Similar Product:
+                Name: ${r.name}
+                Brand: ${r.brand}
+                Price: ₹${r.finalPrice}
+                Description: ${r.text}
+            `,
           )
           .join("\n----------------\n");
       }

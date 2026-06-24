@@ -11,9 +11,10 @@ import { Input } from "../../../ui/input";
 import { ScrollArea } from "../../../ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../ui/avatar";
 import { useAuth } from '../../../context/authContext';
-import { getAccessToken } from '../../../api/api_utility';
+import { getAccessToken, POST } from '../../../api/api_utility';
 import { MessageFromApi } from '../types/chat/message.api';
 import { ChatFromApi } from '../types/chat/chat.api';
+import axios from "axios";
 
 const EVENTS = {
   NEW_MESSAGE: "NEW_MESSAGE",
@@ -28,7 +29,7 @@ interface Message {
   id: string;
   chatID?: string;
   text?: string;
-  media?: string;
+  media?: any[];
   type?: string; // ✅ REQUIRED
   location?: { address?: string }; // ✅ REQUIRED
   contact?: { name?: string }; // ✅ REQUIRED
@@ -38,6 +39,7 @@ interface Message {
   isRead?: boolean;
   status?: "sent" | "delivered" | "read" | "failed";
   createdAt: Date;
+  clientId?: string;
 }
 export interface Chat {
   id: string;
@@ -167,18 +169,35 @@ const Chat = () => {
         const data = await res.json();
         console.log(data)
 
-        const formatted: Chat[] = data.map((chat: ChatFromApi) => ({
-          id: chat.id,
-          chatName: chat.chatName,
-          lastMessage: chat.lastMessagePreview,
-          unreadCount: chat.unreadCount,
-          chatAvatar: chat.chatAvatar,
-          isGroup: chat.isGroup,
-          members: chat.members,
-          createdAt: chat.createdAt,
-          updatedAt: chat.updatedAt || chat.createdAt,
-          isOnline: false
-        }));
+        const formatted: Chat[] = data.map((chat: ChatFromApi) => {
+          let chatName = chat.chatName;
+          let chatAvatar = chat.chatAvatar;
+          console.log(chat.members)
+          // ✅ ONLY for direct chats
+          if (!chat.isGroup) {
+            const otherUser = chat.members?.find(
+              (m: any) => m._id !== currentUserId
+            );
+
+            chatName = otherUser?.fullName || "Unknown";
+            chatAvatar = otherUser?.avatar;
+          }
+          return {
+            id: chat.id,
+            chatName,
+            lastMessage: chat.lastMessagePreview,
+            unreadCount:
+              chat.unreadCounts?.find(
+                (u: any) => (u.user?._id || u.user) === currentUserId
+              )?.count || 0,             //later handle this unreadCount in backend
+            chatAvatar,
+            isGroup: chat.isGroup,
+            members: chat.members,
+            createdAt: chat.createdAt,
+            updatedAt: chat.updatedAt || chat.createdAt,
+            isOnline: false
+          };
+        });
 
         setChats(formatted);
       } catch (err) {
@@ -291,38 +310,49 @@ const Chat = () => {
         text: message.text,
         type: message.type,
         media: message.media,
-        isOwn: message.sender?._id === currentUserId,
+        isOwn: String(message.sender?._id) === String(currentUserId),
         senderName: message.sender?.fullName,
         senderAvatar: message.sender?.avatar,
         //isRead: isActiveChat,
         status: "sent",
-        createdAt: new Date(message.createdAt)
+        createdAt: new Date(message.createdAt),
+        clientId: message.clientId,
       };
 
       // Update messages — migrate any pending temp entry to real chatId
       setMessages((prev) => {
-        const next: Record<string, Message[]> = {};
+        const next: Record<string, Message[]> = { ...prev };
 
-        for (const [key, val] of Object.entries(prev)) {
-          if (key.startsWith("temp")) {
-            // move only NON-duplicate messages
-            next[realChatId] = [
-              ...(next[realChatId] ?? []),
-              ...val.filter(
-                (m) =>
-                  !m.id.startsWith("temp") &&
-                  !next[realChatId]?.some((e) => e.id === m.id)
-              ),
-            ];
-          } else {
-            next[key] = val;
-          }
-        }
         const existing = next[realChatId] ?? [];
 
-        // 🚀 FINAL DEDUP
-        if (existing.some((m) => m.id === formatted.id)) return next;
-        next[realChatId] = [...existing, formatted];
+        let updated = [...existing];
+
+        // ✅ STEP 1: FIND MATCHING OPTIMISTIC MESSAGE
+        const index = updated.findIndex(
+          (m) =>
+            m.clientId &&
+            message.clientId &&
+            m.clientId === message.clientId
+        );
+
+        if (index !== -1) {
+          // ✅ REPLACE (NOT ADD)
+          updated[index] = {
+            ...updated[index],
+            id: message._id,
+            createdAt: new Date(message.createdAt),
+            status: "sent",
+          };
+        } else {
+          // ✅ NORMAL MESSAGE (OTHER USER)
+          const alreadyExists = updated.some((m) => m.id === message._id);
+
+          if (!alreadyExists) {
+            updated.push(formatted);
+          }
+        }
+
+        next[realChatId] = updated;
         return next;
       });
 
@@ -336,38 +366,83 @@ const Chat = () => {
       setPendingChat(null);
 
       // Update chats sidebar
+      // 🔥 FIXED CHAT SIDEBAR LOGIC
       setChats((prev) => {
         const exists = prev.find((c) => c.id === realChatId);
+        const tempChat = prev.find((c) => c.id.startsWith("temp"));
 
+        // ✅ CASE 1: replace temp chat (YOUR BUG FIX)
+        if (!exists && tempChat) {
+          let chatName = tempChat.chatName;
+          let chatAvatar = tempChat.chatAvatar;
+
+          if (!incomingChat?.isGroup) {
+            const otherUser = incomingChat?.members?.find(
+              (m: any) => (m._id ?? m) !== currentUserId
+            );
+
+            chatName = otherUser?.fullName || chatName;
+            chatAvatar = otherUser?.avatar || chatAvatar;
+          }
+
+          const updated = prev.map((c) =>
+            c.id === tempChat.id
+              ? {
+                ...c,
+                id: realChatId,
+                chatName,
+                chatAvatar,
+                lastMessage: message.text || "New message",
+                updatedAt: message.createdAt,
+              }
+              : c
+          );
+
+          const target = updated.find((c) => c.id === realChatId)!;
+          return [target, ...updated.filter((c) => c.id !== realChatId)];
+        }
+        // ✅ CASE 2: new incoming chat (someone messaged first)
         if (!exists) {
-          // New chat arriving (e.g. someone messaged us first)
+          let chatName = "Unknown";
+          let chatAvatar = "";
+
+          if (incomingChat?.isGroup) {
+            chatName = incomingChat.chatName || "Group";
+          } else {
+            // ✅ FIX: find the OTHER user (not current user)
+            const otherUser = incomingChat?.members?.find(
+              (m: any) => (m._id ?? m) !== currentUserId
+            );
+
+            chatName = otherUser?.fullName || "Unknown";
+            chatAvatar = otherUser?.avatar || "";
+          }
+
           const newChat: Chat = {
             id: realChatId,
-            chatName:
-              incomingChat?.chatName ||
-              message.sender.fullName ||
-              "Unknown",
+            chatName,
+            chatAvatar,
             lastMessage: message.text || "New message",
             unreadCount: 1,
             isOnline: false,
             isGroup: incomingChat?.isGroup ?? false,
             members: incomingChat?.members?.map((m: any) => m._id ?? m),
-            createdAt: incomingChat.createdAt,
+            createdAt: incomingChat?.createdAt,
           };
+
           return [newChat, ...prev];
         }
-
-        // Update existing — bring to top
+        // ✅ CASE 3: normal update
         const updated = prev.map((c) =>
           c.id === realChatId
             ? {
               ...c,
               lastMessage: message.text || "New message",
-              updatedAt: new Date().toISOString(),
-              // unread only for non-active chats; handled below via selectedChatId
+              updatedAt: message.createdAt,
             }
             : c
         );
+
         const target = updated.find((c) => c.id === realChatId)!;
         return [target, ...updated.filter((c) => c.id !== realChatId)];
       });
@@ -444,6 +519,7 @@ const Chat = () => {
       socketRef.current.emit(EVENTS.CHAT_JOINED, {
         userId: currentUserId,
         members: selectedChat.members ?? [],
+        chatId: selectedChatId,
       });
 
       // Clear unread for this chat
@@ -541,117 +617,113 @@ const Chat = () => {
 
 
   const handleUsersSelected = async (contacts: any[]) => {
+    if (creatingChat) return; // 🔒 prevent double click
     setCreatingChat(true);
 
-    // 🔥 normalize member IDs
-    const memberIds = contacts.map((c) => c._id || c);
-
-    // ✅ CHECK IF INDIVIDUAL CHAT ALREADY EXISTS
-    if (chatType === "individual") {
-      // Check if chat already exists
-      const existing = chats.find(
-        (c) =>
-          !c.isGroup &&
-          c.members?.length === 2 &&
-          c.members.includes(memberIds[0])
-      );
-
-      if (existing) {
-        setSelectedChatId(existing.id);
-        setCreatingChat(false);
-        setShowUsersModal(false);
-        return;
+    try {
+      if (!contacts?.length) {
+        throw new Error("No users selected");
       }
 
-      // Create temp chat (no API call — chat created on first message)
-      const tempId = `temp-${Date.now()}`;
-      const contactName = contacts[0]?.fullName ?? "Unknown User";
+      // 🔥 normalize member IDs safely
+      const memberIds: string[] = contacts
+        .map((c) => c?._id || c)
+        .filter(Boolean);
 
-      setPendingChat({ id: tempId, name: contactName, members: [currentUserId!, memberIds[0]] });
-      setMessages((prev) => ({ ...prev, [tempId]: [] }));
-      setSelectedChatId(tempId);
-      setCreatingChat(false);
-      setShowUsersModal(false);
-
-      toast({ title: "Chat Ready", description: "Send a message to start the conversation" });
-      return;
-    }
-
-    //  group chat
-    if (chatType === "group") {
-      // ❌ prevent empty group name
-      if (!groupName.trim()) {
-        toast({ title: "Group name required", variant: "destructive" });
-        setCreatingChat(false);
-        return;
+      if (!memberIds.length) {
+        throw new Error("Invalid users");
       }
 
-      const memberIds = contacts.map((c) => c._id || c);
+      // ✅ CHECK IF INDIVIDUAL CHAT ALREADY EXISTS
+      if (chatType === "individual") {
+        const targetUserId = memberIds[0];
+        // Check if chat already exists
+        const existing = chats.find(
+          (c) =>
+            !c.isGroup &&
+            c.members?.length === 2 &&
+            c.members.includes(targetUserId)
+        );
 
-      // 🚀 MULTI USERS → TEMP GROUP CHAT
-      if (memberIds.length > 1) {
+        if (existing) {
+          setSelectedChatId(existing.id);
+          return;
+        }
+
+        // Create temp chat (no API call — chat created on first message)
         const tempId = `temp-${Date.now()}`;
+        const contactName = contacts[0]?.fullName ?? "Unknown User";
 
-        setPendingChat({
-          id: tempId,
-          name: "New Group",
-          members: [currentUserId!, ...memberIds],
-        });
-
+        setPendingChat({ id: tempId, name: contactName, members: [currentUserId!, targetUserId] });
         setMessages((prev) => ({ ...prev, [tempId]: [] }));
         setSelectedChatId(tempId);
 
-        setCreatingChat(false);
-        setShowUsersModal(false);
+        toast({ title: "Chat Ready", description: "Send a message to start the conversation" });
+        return;
+      }
 
-        toast({
-          title: "Group Ready",
-          description: "Send a message to create the group",
+      //  group chat
+      if (chatType === "group") {
+        const trimmedName = groupName.trim();
+        // ❌ prevent empty group name
+        if (!trimmedName) {
+          toast({ title: "Group name required", variant: "destructive" });
+          setCreatingChat(false);
+          return;
+        }
+
+        if (memberIds.length < 2) {
+          throw new Error("Select at least 2 users");
+        }
+
+        // 🔥 API call using axios utility
+        const { data } = await POST<{ success: boolean; data: any; message: string; }>("/api/v1/chat/newgroup", {
+          members: memberIds, name: trimmedName,
         });
 
-        return;
-        // try {
-        //   const res = await fetch(
-        //     `${import.meta.env.VITE_BACKEND_URL_LOCAL}/api/chats/newgroup`,
-        //     {
-        //       method: "POST",
-        //       headers: { "Content-Type": "application/json" },
-        //       credentials: "include",
-        //       body: JSON.stringify({ isGroup: true, members: memberIds, name: groupName }),
-        //     }
-        //   );
+        const chat = data.data;
 
-        //   if (!res.ok) throw new Error("Failed to create group");
+        if (!chat?._id) {
+          throw new Error("Invalid server response");
+        }
 
-        //   const result = await res.json();
-        //   const chat = result.data;
+        const formatted: Chat = {
+          id: chat._id,
+          chatName: chat.chatName,
+          lastMessage: "",
+          unreadCount: 0,
+          isOnline: false,
+          isGroup: true,
+          chatAvatar: chat.groupIcon?.url || "",
+          members: chat.members.map((m: any) => m._id),
+          createdAt: chat.createdAt,
+          updatedAt: chat.updatedAt,
+        };
 
-        //   const formatted: Chat = {
-        //     id: chat._id,
-        //     name: chat.chatName ?? groupName ?? "Unnamed Group",
-        //     lastMessage: "",
-        //     timestamp: chat.updatedAt,
-        //     unreadCount: 0,
-        //     isOnline: false,
-        //     isGroup: true,
-        //     members: chat.members.map((m: any) => m._id ?? m),
-        //   };
+        setChats((prev) => [formatted, ...prev]);
+        setMessages((prev) => ({ ...prev, [formatted.id]: [] }));
+        setSelectedChatId(formatted.id);
 
-        //   setChats((prev) => [formatted, ...prev]);
-        //   setMessages((prev) => ({ ...prev, [formatted.id]: [] }));
-        //   setSelectedChatId(formatted.id);
-
-        //   toast({ title: "Group Created", description: `Group created with ${contacts.length} members` });
-        // } catch {
-        //   toast({ title: "Error", description: "Failed to create group", variant: "destructive" });
-        // } 
-        // finally {
-        // setCreatingChat(false);
-        // setShowUsersModal(false);
-        // setGroupName("");
-        // setSelectedUsers([]);
-        // }
+        toast({ title: "Group Created", description: `Group ${trimmedName} created with ${contacts.length} members` });
       }
+    } catch (error: any) {
+      // 🔥 Axios-aware error handling
+      let message = "Something went wrong";
+
+      if (axios.isAxiosError(error)) {
+        message =
+          error.response?.data?.message ||
+          error.message ||
+          message;
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      toast({ title: "Error", description: "Failed to create group", variant: "destructive" });
+    } finally {
+      setCreatingChat(false);
+      setShowUsersModal(false);
+      setGroupName("");
+      setSelectedUsers([]);
     }
   };
 
@@ -663,14 +735,14 @@ const Chat = () => {
 
   // ✅ SEND MESSAGE (SOCKET ONLY)
   const handleSendMessage = useCallback(
-    (payload: { text?: string; file?: File | null }) => {
+   async (payload: { text?: string; files?: File[] }) => {
       if (!selectedChatId || !socketRef.current) return;
 
       const text = payload.text?.trim();
-      const file = payload.file;
+      const files = payload.files;
 
       // ❌ CASE: nothing
-      if (!text && !file) return;
+      if (!text && (!files || files.length === 0)) return;
 
       // Get members from selected chat or pending chat
       let members: string[] = [];
@@ -691,24 +763,57 @@ const Chat = () => {
 
       // Optimistic message
       const tempMsgId = `temp-msg-${Date.now()}`;
+      const clientId = `client-${Date.now()}`;
+
+      let uploadedMedia: any[] = [];
+
+      // ✅ UPLOAD FIRST (IMPORTANT)
+      if (files && files.length > 0) {
+        const formData = new FormData();
+
+        files.forEach((file) => {
+          formData.append("files", file);
+        });
+
+        const res = await fetch("/api/v1/upload/chat-media", {
+          method: "POST",
+          body: formData,
+        });
+
+        uploadedMedia = await res.json();
+      }
+
+      // ✅ DETECT TYPE
+      let type = "text";
+      let isMixedMedia = false;
+
+      if (uploadedMedia.length > 0) {
+        const types = uploadedMedia.map((m: any) => m.type);
+        const allSame = types.every((t) => t === types[0]);
+
+        type = types[0];
+        if (!allSame) isMixedMedia = true;
+      }
 
       const messagePayload = {
-        text: text || undefined,
-        media: file ? { url: URL.createObjectURL(file) } : undefined,
-        type: file ? "image" : "text", // improve later for other types
+        text: text || "",
+        media: uploadedMedia,
+        type, 
+        isMixedMedia,
+        clientId,
       };
 
       const optimistic: Message = {
         id: tempMsgId,
-        text: messagePayload.text,
-        media: messagePayload.media,
+        text,
+        media: uploadedMedia,
         type: messagePayload.type,
         createdAt: new Date(),
         isOwn: true,
         senderName: user?.fullName ?? "You",
         status: "sent",
+        clientId,
       };
-
 
       setMessages((prev) => ({
         ...prev,
@@ -870,5 +975,6 @@ const Chat = () => {
     </Dialog>
   </div>
 };
+
 
 export default Chat;

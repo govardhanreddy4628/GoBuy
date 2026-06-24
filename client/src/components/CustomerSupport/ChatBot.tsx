@@ -181,28 +181,30 @@ import { ScrollArea } from "../../ui/scroll-area";
 import { useAuth } from "../../context/authContext";
 
 // Production Socket Connection
-const socket: Socket = io(import.meta.env.VITE_BACKEND_URL_LOCAL || "http://localhost:8080");
+const socket: Socket = io(import.meta.env.BASE_URL || "http://localhost:8080");
 
 export const Chatbot: React.FC = () => {
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isHumanAgent, setIsHumanAgent] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   //const { toast } = useToast();
 
-  
   const { user } = useAuth();
-  const userId = user?.id as string | undefined;
+  const userId = user?.id;
 
   useEffect(() => {
+     if (!userId) return;
+
     // 1. Join personal room & fetch history from MongoDB
-    socket.emit("join_chat", { userId });
+    socket.emit("join_chat", { userId, conversationId });
 
     socket.on("chat_history", (history) => {
       setMessages(history.map((m: any) => ({
         id: m._id,
-        content: m.message,
+        content: m.text,
         isUser: m.sender === "user",
         senderType: m.sender, // 'user', 'AI', or 'admin'
         timestamp: new Date(m.createdAt)
@@ -226,23 +228,40 @@ export const Chatbot: React.FC = () => {
       setIsLoading(false);
     });
 
-    socket.on("ai_typing", () => setIsTyping(true));
+     // ✅ STREAM START
+    socket.on("ai_typing", () => {
+      setIsTyping(true);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: "stream",
+          content: "",
+          role: "assistant",
+          streaming: true,
+          createdAt: new Date(),
+        },
+      ]);
+    });
 
     socket.on("ai_message_chunk", ({ chunk }) => {
       setMessages(prev => {
         const last = prev[prev.length - 1];
 
-        if (last && last.streaming) {
-          last.text += chunk;
-          return [...prev];
+        if (last?.streaming) {
+           return [
+            ...prev.slice(0, -1),
+            { ...last, content: last.content + chunk },
+          ];
         }
 
-        return [...prev, { role: "assistant", text: chunk, streaming: true }];
+        return [...prev, { id: Date.now().toString(), role: "assistant", content: chunk, streaming: true }];
       });
     });
 
-     socket.on("ai_message_done", () => {
+     socket.on("ai_message_done", ({ conversationId }) => {
       setIsTyping(false);
+      setConversationId(conversationId);
       setMessages(prev =>
         prev.map(m => (m.streaming ? { ...m, streaming: false } : m))
       );
@@ -258,14 +277,15 @@ export const Chatbot: React.FC = () => {
   }, [userId]);
 
   const handleSendMessage = (content: string) => {
+    if (!content.trim()) return;
+
     // 3. Emit message to Backend (which triggers Gemini or Admin)
-    socket.emit("send_message", { userId, message: content });
+    socket.emit("send_message", { message: content });
 
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
       content,
-      isUser: true,
-      senderType: "user",
+      role: "user",
       timestamp: new Date()
     }]);
 

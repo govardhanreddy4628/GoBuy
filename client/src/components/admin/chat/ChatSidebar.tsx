@@ -53,8 +53,10 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
   }, [chats, searchQuery, filter]);
 
   const sortedChats = [...filteredChats].sort(
-    (a, b) => new Date(b.updatedAt!).getTime() - new Date(a.updatedAt!).getTime()
-  );
+  (a, b) =>
+    new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() -
+    new Date(a.updatedAt ?? a.createdAt ?? 0).getTime()
+);
 
   const handleSelect = useCallback((id: string) => {
     onChatSelect(id);

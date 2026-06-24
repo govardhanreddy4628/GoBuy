@@ -22,7 +22,6 @@ export async function createEmbedding(text: string) {
 }
 
 
-
 export async function queryEmbedding(query: string = "Green cotton polo tshirt for men") {
   const embedding = await createEmbedding(query);
   console.log("Embedding length:", embedding?.length);

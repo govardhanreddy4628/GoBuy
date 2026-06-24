@@ -14,6 +14,7 @@ import {
 import { getOtherMember, getSockets } from "../lib/helper.js";
 import {
   deleteFilesFromCloudinary,
+  uploadMultipleChatMedia,
   uploadMultipleToCloudinary,
 } from "../services/cloudinaryService.js";
 
@@ -23,7 +24,9 @@ export interface AuthRequest extends Request {
 
 const emitEvent = (req, event, users, data) => {
   const io = req.app.get("io");
+  if (!users || !Array.isArray(users)) return;
   const usersSocket = getSockets(users);
+  if (!usersSocket.length) return;
   io.to(usersSocket).emit(event, data);
 };
 
@@ -173,7 +176,11 @@ const fetchChats: RequestHandler = async (req: any, res) => {
         chatName,
         chatAvatar,
         isGroup: chat.isGroup,
-        members: chat.members.map((m: any) => m._id.toString()),
+        members: chat.members.map((m: any) => ({
+          _id: m._id.toString(),
+          fullName: m.fullName,
+          avatar: m.avatar,
+        })),
 
         lastMessage: chat.lastMessage
           ? {
@@ -195,7 +202,6 @@ const fetchChats: RequestHandler = async (req: any, res) => {
         lastMessagePreview: getLastMessagePreview(chat.lastMessage),
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt,
-
         unreadCount: unread ? unread.count : 0,
       };
     });
@@ -214,39 +220,119 @@ const allMessagesOfChat = TryCatch(async (req, res) => {
     .populate("chat", "isGroup");
 
   const transformedMessages = messages.map((msg) => ({
-  _id: msg._id.toString(),
+    _id: msg._id.toString(),
 
-  text: msg.text,
-  type: msg.type,
-  media: msg.media,
-  createdAt: msg.createdAt,
+    text: msg.text,
+    type: msg.type,
+    media: msg.media,
+    createdAt: msg.createdAt,
 
-  chatId:
-    typeof msg.chat === "object"
-      ? msg.chat._id.toString()
-      : msg.chat.toString(),
+    chatId:
+      typeof msg.chat === "object"
+        ? msg.chat._id.toString()
+        : msg.chat.toString(),
 
-  status: msg.status,
+    status: msg.status,
 
-  readBy: msg.readBy.map((r: any) => ({
-    user:
-      typeof r.user === "object"
-        ? r.user._id.toString()
-        : r.user.toString(),
-    at: r.at,
-  })),
+    readBy: msg.readBy.map((r: any) => ({
+      user:
+        typeof r.user === "object" ? r.user._id.toString() : r.user.toString(),
+      at: r.at,
+    })),
 
-  sender: msg.sender
-    ? {
-        _id: msg.sender._id.toString(),
-        fullName: msg.sender.fullName,
-        avatar: msg.sender.avatar,
-      }
-    : null,
-}));
+    sender: msg.sender
+      ? {
+          _id: msg.sender._id.toString(),
+          fullName: msg.sender.fullName,
+          avatar: msg.sender.avatar,
+        }
+      : null,
+  }));
 
   res.status(200).json(transformedMessages);
 });
+
+//---------------- Create Group Chat ----------------
+const createGroupChat = async (req: AuthRequest, res: Response) => {
+  const { members: usersRaw, name } = req.body;
+
+  if (!usersRaw || !name) {
+    res.status(400).json({ message: "Please fill all the fields" });
+    return;
+  }
+
+  let members: string[];
+  try {
+    members = typeof usersRaw === "string" ? JSON.parse(usersRaw) : usersRaw;
+  } catch {
+    res.status(400).json({ message: "Invalid users format" });
+    return;
+  }
+
+  if (!Array.isArray(members) || members.length < 2) {
+    res.status(400).json({
+      message: "At least 2 other users are required to form a group chat",
+    });
+    return;
+  }
+
+  if (!req.user?._id) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  const allMembers = [...new Set([...members, req.user._id.toString()])];
+  try {
+    const group = await ChatModel.create({
+      chatName: name,
+      members: allMembers,
+      isGroup: true,
+      groupAdmins: [req.user._id], // ✅ correct
+      groupCreator: req.user._id, // ✅ correct
+    });
+
+    const fullGroupChat = await ChatModel.findById(group._id)
+      .populate("members", "fullName avatar")
+      .populate("groupAdmins", "fullName avatar")
+      .populate("groupCreator", "fullName avatar");
+
+    if (!fullGroupChat) {
+      res.status(500).json({ message: "Failed to create group chat" });
+      return;
+    }
+    
+    emitEvent(req, ALERT, allMembers, `Welcome to ${name} group`);
+    emitEvent(req, REFETCH_CHATS, allMembers);
+    return res
+      .status(201)
+      .json({ success: true, data: fullGroupChat, message: "Group Created" });
+  } catch (error: any) {
+    console.error("Error creating group chat:", error);
+    res.status(500).json({ message: error.message || "Server error" });
+  }
+};
+
+export const uploadChatMediaController = async (req, res) => {
+  try {
+    const files = req.files;
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ message: "No files" });
+    }
+
+    const media = await uploadMultipleChatMedia(files);
+
+    return res.json(media);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Upload failed" });
+  }
+};
+
+
+
+
+
 
 const getMyChats = TryCatch(async (req, res, next) => {
   const chats = await ChatModel.find({
@@ -293,7 +379,6 @@ const getMyGroups = TryCatch(async (req, res, next) => {
     _id,
     isGroup,
     name: chatName,
-
     avatar: members.slice(0, 3).map((m) => m.avatar),
   }));
 
@@ -435,63 +520,6 @@ const deleteChat = TryCatch(async (req, res, next) => {
     message: "Chat deleted successfully",
   });
 });
-
-//---------------- Create Group Chat ----------------
-const createGroupChat = async (req: AuthRequest, res: Response) => {
-  const { members: usersRaw, name } = req.body;
-
-  if (!usersRaw || !name) {
-    res.status(400).json({ message: "Please fill all the fields" });
-    return;
-  }
-
-  let members: string[];
-  try {
-    members = typeof usersRaw === "string" ? JSON.parse(usersRaw) : usersRaw;
-  } catch {
-    res.status(400).json({ message: "Invalid users format" });
-    return;
-  }
-
-  if (!Array.isArray(members) || members.length < 2) {
-    res.status(400).json({
-      message: "At least 2 other users are required to form a group chat",
-    });
-    return;
-  }
-
-  if (!req.user?._id) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const allMembers = [...new Set([...members, req.user._id.toString()])];
-  try {
-    const group = await ChatModel.create({
-      chatName: name,
-      members: allMembers,
-      isGroup: true,
-      groupAdmin: req.user?._id,
-    });
-
-    const fullGroupChat = await ChatModel.findById(group._id)
-      .populate("members", "fullName avatar")
-      .populate("groupAdmin", "fullName avatar");
-
-    if (!fullGroupChat) {
-      res.status(500).json({ message: "Failed to create group chat" });
-      return;
-    }
-    emitEvent(req, ALERT, allMembers, `Welcome to ${name} group`);
-    emitEvent(req, REFETCH_CHATS, members);
-    return res
-      .status(201)
-      .json({ success: true, data: fullGroupChat, message: "Group Created" });
-  } catch (error: any) {
-    console.error("Error creating group chat:", error);
-    res.status(500).json({ message: error.message || "Server error" });
-  }
-};
 
 // ---------------- Rename Group ----------------
 const renameGroup: RequestHandler = asyncHandler(

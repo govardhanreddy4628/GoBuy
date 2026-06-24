@@ -2,10 +2,22 @@ import React, { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { X } from 'lucide-react';
 
+// ✅ Define FormData type
+type FormData = {
+  addressLine1: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
+  landmark: string;
+  mobile: string;
+  addressType: string;
+};
+
 export default function AddressPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     addressLine1: '',
     city: '',
     state: '',
@@ -16,7 +28,7 @@ export default function AddressPage() {
     addressType: 'Home',
   });
 
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -57,6 +69,12 @@ export default function AddressPage() {
     });
     setErrors({});
   };
+
+  const cityStateFields: (keyof FormData)[] = ["city", "state"];
+  const pincodeCountryFields: (keyof FormData)[] = [
+    "pincode",
+    "country",
+  ]; 
 
   return (
     <div className="p-8">
@@ -135,7 +153,7 @@ export default function AddressPage() {
 
                 {/* City + State */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {["city", "state"].map((field) => (
+                  {cityStateFields.map((field) => (
                     <div key={field}>
                       <input
                         type="text"
@@ -156,7 +174,7 @@ export default function AddressPage() {
 
                 {/* Pincode + Country */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {["pincode", "country"].map((field) => (
+                  {pincodeCountryFields.map((field) => (
                     <div key={field}>
                       <input
                         type="text"
