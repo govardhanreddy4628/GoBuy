@@ -206,13 +206,21 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 
-// // Error handler (must be at last in code)
-app.use(errorHandler);
+// // // Error handler (must be at last in code)
+// app.use(errorHandler);
 
-const DIRNAME = path.resolve();
-app.use(express.static(path.join(DIRNAME, "/client/dist")));  // React build files
-app.use("*", (_, res) => {
-  res.sendFile(path.resolve(DIRNAME, "client", "dist", "index.html"));
+// const DIRNAME = path.resolve();
+// app.use(express.static(path.join(DIRNAME, "/client/dist")));  // React build files
+// app.use("*", (_, res) => {
+//   res.sendFile(path.resolve(DIRNAME, "client", "dist", "index.html"));
+// });
+
+// 404 handler for API
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "API route not found",
+  });
 });
 
 export { app }; // export the server
