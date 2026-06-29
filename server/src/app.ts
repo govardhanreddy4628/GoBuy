@@ -53,22 +53,30 @@ const allowedOrigins = [
   process.env.CLIENT_URL_PROD,
 ].filter(Boolean);
 
-const corsOptions: cors.CorsOptions = {
-  origin(origin, callback) {
-    // 🚫 Skip logging for server-to-server requests (like Inngest)
-    if (!origin) {
+const isProd = process.env.NODE_ENV === "production";
+
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: Function) {
+
+    // ✅ Allow requests with no origin (Postman, mobile apps, etc.) // 🚫 Skip logging for server-to-server requests (like Inngest)
+    if (!origin) return callback(null, true);
+
+    // 🧪 DEVELOPMENT → allow all
+    if (!isProd) {
+       // ✅ Only log real browser requests
+      console.log("🧪 DEV CORS:", origin);
       return callback(null, true);
     }
 
-    // ✅ Only log real browser requests
-    console.log("🧪 CORS origin check:", origin);
-
+    // 🚀 PRODUCTION → strict allow
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+      return callback(null, true);
     }
+
+    console.log("❌ Blocked by CORS:", origin);
+    return callback(new Error("Not allowed by CORS"));
   },
+
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -77,6 +85,7 @@ const corsOptions: cors.CorsOptions = {
 
 // default middleware for any mern project
 app.use(cors(corsOptions)); // refer npm cors site for more info. and this middleware should be at top.
+app.set("trust proxy", 1);
 
 // ✅ Handle preflight requests globally
 app.options("*", cors(corsOptions));
@@ -110,7 +119,7 @@ app.use((req, res, next) => {
 
 // ---------------- MIDDLEWARE ----------------
 app.use(cookieParser());
-app.use(express.static("public")); //public is a folder name where we can store images
+app.use(express.static("public")); //public is a folder name where we can store images (server static assets)
 app.use(express.json({ limit: "32kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(helmet({crossOriginResourcePolicy: false}))
@@ -123,7 +132,6 @@ app.use(
 );      
 // This will hide all Inngest logs in terminal since they are very repetitive. You can customize the skip condition as needed.
 //app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-app.use(express.static("public"));   // serve static assets
 
 // ---------------- INNGEST ----------------
 app.use("/api/inngest", inngestHandler);
