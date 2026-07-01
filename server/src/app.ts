@@ -64,7 +64,7 @@ const corsOptions = {
     // 🧪 DEVELOPMENT → allow all
     if (!isProd) {
        // ✅ Only log real browser requests
-      console.log("🧪 DEV CORS:", origin);
+      console.log("🧪 DEV CORS ORIGIN CHECK:", origin);
       return callback(null, true);
     }
 

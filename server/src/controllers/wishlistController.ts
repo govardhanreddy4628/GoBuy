@@ -190,7 +190,7 @@ import WishlistModel from "../models/wishlistModel.js";
 
 
 
-export const toggleWishlistController = async (req, res) => {
+export const toggleWishlistController = async (req:Request, res:Response) => {
   try {
     const userId = req.user._id;
     const { productId, size, color } = req.body;
@@ -229,7 +229,7 @@ export const toggleWishlistController = async (req, res) => {
 };
 
 
-export const getWishlistController = async (req, res) => {
+export const getWishlistController = async (req: Request, res: Response) => {
   try {
     const userId = req.user._id;
 

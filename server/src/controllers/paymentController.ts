@@ -1,6 +1,5 @@
 // server/controllers/paymentController.js
 
-import { razorpayInstance } from "../index.js";
 import crypto from "crypto";
 import { Request, Response } from "express";
 import orderModel from "../models/orderModel.js";
