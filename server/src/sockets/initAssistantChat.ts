@@ -1,4 +1,4 @@
-import { Server, Socket } from "socket.io";
+import { Namespace, Socket } from "socket.io";
 import { aiQueue } from "../aiWorker/queue.js"; // Queue for processing AI messages asynchronously
 import conversation from "../models/aiConversation.js";
 import assistantMessageModal from "../models/assistantMessageModal.js";
@@ -42,7 +42,7 @@ export function buildSystemPrompt(intent: string) {
 
 const activeHumanChats = new Map<string, boolean>();
 
-export function initAssistantChat(io: Server) {
+export function initAssistantChat(io: Namespace) {
   // ---------------- AI WORKER QUEUE ----------------
   // Listen for 'process' events from aiQueue to handle AI responses
   aiQueue.on("process", async (job) => {

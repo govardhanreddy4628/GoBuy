@@ -188,9 +188,7 @@ import WishlistModel from "../models/wishlistModel.js";
 //   }
 // };
 
-
-
-export const toggleWishlistController = async (req:Request, res:Response) => {
+export const toggleWishlistController = async (req: Request, res: Response) => {
   try {
     const userId = req.user._id;
     const { productId, size, color } = req.body;
@@ -221,13 +219,14 @@ export const toggleWishlistController = async (req:Request, res:Response) => {
       message: "Added to wishlist",
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Something went wrong";
+
     res.status(500).json({
       success: false,
-      message: err.message,
+      message,
     });
   }
 };
-
 
 export const getWishlistController = async (req: Request, res: Response) => {
   try {
@@ -242,9 +241,11 @@ export const getWishlistController = async (req: Request, res: Response) => {
       data: items,
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Something went wrong";
+
     res.status(500).json({
       success: false,
-      message: err.message,
+      message,
     });
   }
 };

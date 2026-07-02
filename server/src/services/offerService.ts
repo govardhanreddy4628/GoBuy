@@ -1,7 +1,9 @@
+import { Types } from "mongoose";
 import { OfferModel } from "../models/offersModel.js";
+import { IOrder } from "../models/orderModel.js";
 
 
-export const applyOffer = async (order, offerId) => {
+export const applyOffer = async (order: IOrder, offerId: string | Types.ObjectId) => {
   const offer = await OfferModel.findById(offerId);
 
   if (!offer || !offer.isActive) {

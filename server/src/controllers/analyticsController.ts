@@ -212,13 +212,13 @@ export const getOrdersOverviewController = async (req: Request, res: Response) =
 
 
 export const revenueOverviewController = async (req:Request, res:Response) => {
-  const range = req.query.range || "month";
+  const range = typeof req.query.range === "string" ? req.query.range : "Month";
   const data = await getRevenueOverview(range);
   res.json({success: true, data});
 };
 
 export const customersOverviewController = async (req:Request, res:Response) => {
-  const range = req.query.range || "Month";
+  const range = typeof req.query.range === "string" ? req.query.range : "Month";
   const data = await getCustomersOverview(range);
   res.json({success: true, data});
 };

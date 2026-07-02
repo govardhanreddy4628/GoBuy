@@ -1,10 +1,10 @@
  Option 1: Use ts-node to Run .ts Files (Good for Development)
- Update your package.json scripts to use ts-node:
+ Update package.json scripts to use ts-node:
  "scripts": {
   "start": "ts-node src/index.ts",
   "dev": "nodemon --exec ts-node src/index.ts"
 }
-Also ensure your entry point file is in src/index.ts.
+Also ensure entry point file is in src/index.ts.
 
 Install ts-node and typescript if you haven’t already:
 npm install --save-dev ts-node typescript
@@ -13,7 +13,7 @@ npm start     # just run index.ts directly
 
 
 Option 2: Compile to JavaScript and Run with Node.js (Good for Production)
-Step 1: Make sure your tsconfig.json is correct
+Step 1: Make sure tsconfig.json is correct
 {
   "compilerOptions": {
     "target": "ES6",

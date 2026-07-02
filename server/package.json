@@ -13,7 +13,8 @@
     "seed:users": "tsx src/scripts/seedUser.ts",
     "seed:agents": "tsx src/scripts/seedAgents.ts",
     "seed:categories": "tsx src/scripts/fixCategoryNames.ts",
-    "seed:productembeddings": "tsx src/scripts/createProductEmbeddings"
+    "seed:productembeddings": "tsx src/scripts/createProductEmbeddings",
+    "fix:status": "ts-node src/scripts/fixStatus.ts"
   },
   "author": "",
   "license": "ISC",
@@ -32,6 +33,7 @@
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "date-fns": "^4.4.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-async-handler": "^1.2.0",

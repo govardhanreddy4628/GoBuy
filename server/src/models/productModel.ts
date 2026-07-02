@@ -36,9 +36,6 @@ interface IVariant {
 
 
 
-
-
-
 export interface IShipping extends Document {
   isShippable: boolean;
   shippingCost?: number;

@@ -1,4 +1,4 @@
-import { getTrendingSearches } from "../controllers/searchController.js";
+//import { getTrendingSearches } from "../controllers/searchController.js";
 
 import express from "express";
 import {getAdminDashboardStats, getTopSellingProductsController, getProductConversionAnalyticsController, trackProductView, getProductFunnelAnalyticsController, getMonthlyRevenueController,

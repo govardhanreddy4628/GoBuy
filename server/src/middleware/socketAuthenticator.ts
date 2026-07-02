@@ -62,11 +62,8 @@ interface DecodedToken {
 
 
 // Socket.io Middleware
-interface AuthenticatedSocket extends Socket {
-  user: IUserDocument;
-}
 
-export const socketAuthenticator = async (socket: AuthenticatedSocket, next: (err?: any) => void) => {
+export const socketAuthenticator = async (socket: Socket, next: (err?: any) => void) => {
   try {
     // Parse cookies from the handshake headers
     const cookieHeader = socket.handshake.headers?.cookie || "";

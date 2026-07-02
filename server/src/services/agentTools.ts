@@ -1,26 +1,56 @@
-const toolMap = {
-  getDashboardStats: async (params) =>
-    GET(`/api/analytics/dashboard?range=${params.range}`),
+import {
+  getDashboardStats,
+  getTopSellingProducts,
+  getRevenueOverview,
+  getOrdersOverview,
+  getRevenuePrediction,
+} from "../services/analyticsService.js";
 
-  getTopSellingProducts: async (params) =>
-    GET(`/api/analytics/top-products?range=${params.range}`),
-
-  getRevenueOverview: async (params) =>
-    GET(`/api/analytics/revenue-overview?range=${params.range}`),
-
-  getOrdersOverview: async (params) =>
-    GET(`/api/analytics/orders-overview?range=${params.range}`),
-
-  getPrediction: async () =>
-    GET(`/api/analytics/prediction`)
+type ToolParams = {
+  range?: string;
 };
 
-export async function executeTool(name, params) {
-  if (!toolMap[name]) throw new Error("Unknown tool");
+type ToolName =
+  | "getDashboardStats"
+  | "getTopSellingProducts"
+  | "getRevenueOverview"
+  | "getOrdersOverview"
+  | "getPrediction";
 
-  const timeout = new Promise((_, reject) =>
+// ✅ Clean tool map (direct service calls)
+const toolMap: Record<
+  ToolName,
+  (params?: ToolParams) => Promise<any>
+> = {
+  getDashboardStats: async (params) =>
+    getDashboardStats(params?.range ?? "week"),
+
+  getTopSellingProducts: async (params) =>
+    getTopSellingProducts(params?.range ?? "7days"),
+
+  getRevenueOverview: async (params) =>
+    getRevenueOverview(params?.range ?? "Week"),
+
+  getOrdersOverview: async (params) =>
+    getOrdersOverview(params?.range ?? "Week"),
+
+  getPrediction: async () => getRevenuePrediction(),
+};
+
+// ✅ Executor with timeout
+export async function executeTool(
+  name: ToolName,
+  params?: ToolParams
+): Promise<any> {
+  const tool = toolMap[name];
+
+  if (!tool) {
+    throw new Error(`Unknown tool: ${name}`);
+  }
+
+  const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("Timeout")), 10000)
   );
 
-  return Promise.race([toolMap[name](params), timeout]);
+  return Promise.race([tool(params), timeout]);
 }

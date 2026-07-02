@@ -1,37 +1,24 @@
-import Product from "../../models/product.js";
-
-export async function getProductContext(message: string) {
-  const msg = message.toLowerCase();
-
-  // 🔥 simple keyword search (upgrade later to vector search)
-  const products = await Product.find({
-    name: { $regex: msg, $options: "i" }
-  }).limit(5);
-
-  return products.map(p => `
-Product: ${p.name}
-Price: ₹${p.price}
-Stock: ${p.stock}
-Description: ${p.description}
-`).join("\n");
-}
-
-
-
-
-
-
-
 import productModel from "../../models/productModel.js";
 import { ProductVector } from "../../models/productVectorModel.js";
-import { queryEmbedding } from "./embeddingService.js";
-import { vectorSearchAggregationPipeline } from "./vectorSearchService.js";
+import { queryEmbedding } from "../rag/embeddingService.js";
+import { vectorSearchAggregationPipeline } from "../rag/vectorSearchService.js";
 
-export async function getProductContext(query: string, productId?: string) {
 
-  // ✅ PRIMARY PRODUCT
+type VectorResult = {
+  productId: string;
+  text: string;
+  score?: number;
+};
+
+export async function getProductContext(
+  query: string,
+  productId?: string
+): Promise<string> {
+  const msg = query.toLowerCase();
+
+  /* ---------------- PRIMARY PRODUCT ---------------- */
   const selectedProduct = productId
-    ? await productModel.findById(productId)
+    ? await productModel.findById(productId).lean()
     : null;
 
   const selectedContext = selectedProduct
@@ -45,27 +32,47 @@ Description: ${selectedProduct.description}
 `
     : "";
 
-  // ✅ VECTOR SEARCH
+  /* ---------------- KEYWORD SEARCH (IMPORTANT) ---------------- */
+  const keywordProducts = await productModel
+    .find({
+      name: { $regex: msg, $options: "i" },
+    })
+    .limit(5)
+    .lean();
+
+  const keywordContext = keywordProducts
+    .map(
+      (p) => `
+Matched Product:
+Name: ${p.name}
+Price: ₹${p.finalPrice}
+Stock: ${p.quantityInStock}
+Description: ${p.description}
+`
+    )
+    .join("\n");
+
+  /* ---------------- VECTOR SEARCH ---------------- */
   const embeddedQuery = await queryEmbedding(query);
 
   let ragContext = "";
 
   if (embeddedQuery.length > 0) {
-    const vectorResults = await vectorSearchAggregationPipeline(
+    const vectorResults: VectorResult[] = await vectorSearchAggregationPipeline(
       ProductVector,
       embeddedQuery
     );
 
     if (vectorResults.length > 0) {
-      const productIds = vectorResults.map(r => r.productId);
+      const productIds = vectorResults.map((r:VectorResult) => r.productId);
 
-      const products = await productModel.find({
-        _id: { $in: productIds },
-      });
+      const products = await productModel
+        .find({ _id: { $in: productIds } })
+        .lean();
 
-      const enriched = vectorResults.map(r => {
+      const enriched = vectorResults.map((r:VectorResult) => {
         const product = products.find(
-          p => p._id.toString() === r.productId.toString()
+          (p) => p._id.toString() === r.productId.toString()
         );
 
         return `
@@ -80,8 +87,13 @@ Description: ${r.text}
     }
   }
 
+  /* ---------------- FINAL CONTEXT ---------------- */
+
   return `
 ${selectedContext}
+
+KEYWORD MATCHES:
+${keywordContext || "No direct matches"}
 
 SIMILAR PRODUCTS:
 ${ragContext || "No similar products"}

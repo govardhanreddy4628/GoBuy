@@ -1,6 +1,7 @@
 // server/routes/paymentRoutes.js
 import express from 'express';
-import { createRazorpayOrder, verifyPayment, razorpayWebhook } from '../controllers/paymentController.js';
+import { razorpayWebhook } from '../controllers/paymentController.js';
+//import { createRazorpayOrder, verifyPayment } from '../controllers/paymentController.js';
 
 
 const router = express.Router();

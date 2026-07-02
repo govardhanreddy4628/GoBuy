@@ -1,8 +1,8 @@
-import Order from "../models/orderModel2.js";
+import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
 import cron from "node-cron";
 import mongoose from "mongoose";
-import { getIO } from "../sockets/socket.js";
+import { getIO } from "../sockets/index.js";
 
 export const cancelExpiredOrders = async () => {
   const session = await mongoose.startSession();

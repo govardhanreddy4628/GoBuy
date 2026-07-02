@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import productModel from "../models/productModel.js";
+import productModel, { IProduct } from "../models/productModel.js";
 import { z } from "zod";
 import cloudinary from "../config/cloudinary.js";
 import mongoose from "mongoose";
@@ -178,7 +178,7 @@ export const createProduct = async (
     const finalPrice =
       req.body.finalPrice === undefined ? 0 : req.body.finalPrice;
 
-    if (!Types.ObjectId.isValid(category)) {
+    if (!Types.ObjectId.isValid(categoryId)) {
       res.status(400).json({ message: "Invalid category ID format" });
       return;
     }
@@ -302,7 +302,7 @@ export const createProduct = async (
       }
     }
 
-    const category = await CategoryModel.findById(req.body.category);
+    const category = await CategoryModel.findById(categoryId);
 
     if (!category) {
       throw new Error("Category not found");
@@ -331,7 +331,7 @@ export const createProduct = async (
     // product embeddings
     syncProductEmbedding(newProduct).catch((err) =>
       console.error("Embedding error:", err),
-    );                  // we did not used await here even though it is async function to make it asynchronus to fire the product creation response without waiting for the embedding to complete. This is because embedding can take some time and we don't want to delay the product creation response. We also catch any errors that occur during embedding and log them, but we don't want those errors to affect the product creation process.
+    ); // we did not used await here even though it is async function to make it asynchronus to fire the product creation response without waiting for the embedding to complete. This is because embedding can take some time and we don't want to delay the product creation response. We also catch any errors that occur during embedding and log them, but we don't want those errors to affect the product creation process.
 
     // (Optional) Post-processing event
     try {
@@ -490,7 +490,7 @@ export const updateProductController = async (
     // product embeddings
     syncProductEmbedding(updatedProduct).catch((err) =>
       console.error("Embedding error:", err),
-    );  
+    );
 
     return res.status(200).json({
       success: true,
@@ -1642,7 +1642,9 @@ export const checkoutController = async (req: Request, res: Response) => {
       await coupon.save();
     }
 
-    const totalPrice = product.finalPrice * quantity;
+    const price = product.finalPrice ?? product.listedPrice;
+
+    const totalPrice = price * quantity;
     const finalPrice = Math.round(totalPrice * (1 - discountPercentage / 100));
 
     res.status(200).json({
@@ -1887,7 +1889,12 @@ export const getRatingRange = async (req: Request, res: Response) => {
 
     const allCategories = await CategoryModel.find()
       .select("_id parentCategoryId")
-      .lean();
+      .lean<
+        {
+          _id: mongoose.Types.ObjectId;
+          parentCategoryId?: mongoose.Types.ObjectId | null;
+        }[]
+      >();
 
     const targetId = new mongoose.Types.ObjectId(category as string);
 
@@ -1966,7 +1973,12 @@ export const getBrandsByCategory = async (req: Request, res: Response) => {
 
     const allCategories = await CategoryModel.find()
       .select("_id parentCategoryId")
-      .lean();
+      .lean<
+        {
+          _id: mongoose.Types.ObjectId;
+          parentCategoryId?: mongoose.Types.ObjectId | null;
+        }[]
+      >();
 
     const targetId = new mongoose.Types.ObjectId(category as string);
 
@@ -2033,7 +2045,12 @@ export const getProducts = async (req: Request, res: Response) => {
     if (category && mongoose.Types.ObjectId.isValid(category as string)) {
       const allCategories = await CategoryModel.find()
         .select("_id parentCategoryId")
-        .lean();
+        .lean<
+          {
+            _id: mongoose.Types.ObjectId;
+            parentCategoryId?: mongoose.Types.ObjectId | null;
+          }[]
+        >();
 
       const targetId = new mongoose.Types.ObjectId(category as string);
 
@@ -2163,9 +2180,12 @@ export const advancedSearch = async (req: Request, res: Response) => {
   }
 
   // 📊 Track search
+  if (typeof q !== "string") {
+    return res.status(400).json({ success: false, message: "Invalid query" });
+  }
   await trackSearch(q);
 
-  let products = [];
+  let products: IProduct[] = [];
 
   // ----------------------------------------
   // 🔹 PRODUCT EXACT MATCH (iPhone 15)
@@ -2433,4 +2453,3 @@ export const mergeRecentlyViewed = async (req: Request, res: Response) => {
     res.status(500).json({ success: false });
   }
 };
-

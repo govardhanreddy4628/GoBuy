@@ -2,6 +2,12 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import Order from "../models/orderModel.js";
 import productModel from "../models/productModel.js";
 
+interface AIResponse {
+  text: string;
+  needsEscalation: boolean;
+  reason: string | null;
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const chatModel = genAI.getGenerativeModel({
@@ -15,14 +21,14 @@ const embeddingModel = genAI.getGenerativeModel({
 export const generateGeminiResponse = async (
   userMessage: string,
   userId: string
-) => {
+): Promise<AIResponse> => {
   try {
     // 1️⃣ Create embedding
     const embeddingResult = await embeddingModel.embedContent(userMessage);
     const queryVector = embeddingResult.embedding.values;
 
     // 2️⃣ Vector search in MongoDB Atlas
-    const products = await productModel.aggregate([
+    const products = await productModel.aggregate<any>([
       {
         $vectorSearch: {
           index: "product_vector_index",

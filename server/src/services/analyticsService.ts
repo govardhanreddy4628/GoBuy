@@ -940,7 +940,6 @@ export const getCustomersOverview = async (range: string = "Week") => {
 
 
   /* ---------------- USERS ---------------- */
-
   const usersRaw = await UserModel.aggregate([
     {
       $match: {
@@ -957,7 +956,6 @@ export const getCustomersOverview = async (range: string = "Week") => {
   ]);
 
   /* ---------------- CUSTOMERS (FROM ORDERS) ---------------- */
-
   const customersRaw = await Order.aggregate([
     {
       $match: {
@@ -979,7 +977,6 @@ export const getCustomersOverview = async (range: string = "Week") => {
   ]);
 
   /* ---------------- LABEL ARRAYS ---------------- */
-
   const months = [
     "Jan",
     "Feb",
@@ -1010,15 +1007,7 @@ export const getCustomersOverview = async (range: string = "Week") => {
   /* ---------------- FORMAT RESPONSE ---------------- */
 
   const result = labels.map((label, index) => {
-    let key;
-
-    if (range === "Year") key = index + 1;
-
-    if (range === "Week") key = index + 1;
-
-    if (range === "Day") key = index;
-
-    if (range === "Month") key = index + 1;
+    const key = range === "Day" ? index : index + 1;
 
     const user = usersRaw.find((u: any) => u._id === key);
     const customer = customersRaw.find((c: any) => c._id === key);

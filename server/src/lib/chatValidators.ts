@@ -1,8 +1,9 @@
 //convert below code to zod validation later
 import { body, param, validationResult } from "express-validator";
 import { ApiError } from "../utils/ApiError.js";
+import { Request, Response, NextFunction } from "express";
 
-const validateHandler = (req, res, next) => {
+const validateHandler = (req:Request, res:Response, next:NextFunction) => {
   const errors = validationResult(req);
 
   const errorMessages = errors

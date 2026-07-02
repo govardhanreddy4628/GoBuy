@@ -1,13 +1,10 @@
-import mongoose, { Document } from "mongoose";
-
-interface IUser extends Document {
+import mongoose from "mongoose";
+import { HydratedDocument } from "mongoose";
+interface IUser {
   fullName: string;
   email: string;
   password: string;
-  phoneNumber: {
-  type: String,
-  default: "",
-},
+  phoneNumber: string;
 
 
 //   phoneNumber: {
@@ -46,14 +43,13 @@ interface IUser extends Document {
     backupCodes: string[];
     verified: boolean;
   };
-}
-
-export interface IUserDocument extends IUser, Document {
   createdAt: Date;
   updatedAt: Date;
 }
+export type IUserDocument = HydratedDocument<IUser>;
 
-const userSchema = new mongoose.Schema<IUserDocument>(
+
+const userSchema = new mongoose.Schema<IUser>(
   {
     fullName: { type: String },
 
@@ -77,8 +73,8 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     },
 
     phoneNumber: {
-      type: Number,
-      default: null,
+      type: String,
+      default: "",
     },
 
     authProvider: { type: String, enum: ["custom", "google"], required: true },
@@ -181,7 +177,7 @@ userSchema.set("toJSON", {
   },
 });
 
-const UserModel = mongoose.model<IUserDocument>("User", userSchema);
+const UserModel = mongoose.model<IUser>("User", userSchema);
 export default UserModel;
 
 

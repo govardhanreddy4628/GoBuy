@@ -1,13 +1,10 @@
 import { Router } from "express";
 
-import {
-  addToWishlistController,
-  getWishlistItemsController,
-  deleteWishlistItemController,
-  updateWishlistItemController,
-  getWishlistController,
-  toggleWishlistController,
-} from "../controllers/wishlistController.js";
+import { getWishlistController, toggleWishlistController } from "../controllers/wishlistController.js";
+// import {
+//   addToWishlistController, getWishlistItemsController,
+//   deleteWishlistItemController, updateWishlistItemController,
+// } from "../controllers/wishlistController.js";
 import { authenticate } from "../middleware/authenticate.js";
 
 

@@ -1,11 +1,14 @@
 // //it is global type declaration file for express request object so that we can access userId and userRole in req object throughout the project.
-
 import { IUserDocument } from "../models/userModel";
+import { Server as SocketIOServer } from "socket.io";
 
 declare global {
   namespace Express {
     interface Request {              // Extend Express Request interface to include 'userId' and 'userRole'
       user?: IUserDocument;
+    }
+    interface Application {
+      io: SocketIOServer;   // ✅ THIS FIXES req.app.get("io")
     }
   }
 }
