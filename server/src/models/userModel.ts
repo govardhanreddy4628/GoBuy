@@ -40,7 +40,7 @@ interface IUser {
   mfa?: {
     enabled: boolean;
     secret: string | null;
-    backupCodes: string[];
+    backupCodes: string[];  //hashed
     verified: boolean;
   };
   createdAt: Date;

@@ -29,13 +29,18 @@ const startServer = async () => {
           .white
       );
     });
-  } catch (error) {
-    console.error("❌ Server startup error:", error);
-    process.exit(1);
-  }
+  } catch (error: any) {
+  console.error("❌ Server startup error:");
+  console.error("message:", error?.message);
+  console.error("stack:", error?.stack);
+  console.error("full error:", JSON.stringify(error, null, 2));
+  process.exit(1);
+}
 };
 
 startServer();
+
+
 
 
 

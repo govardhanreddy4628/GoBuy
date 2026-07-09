@@ -85,42 +85,42 @@ function safeJsonParse(text: string) {
 // }
 
 
-// export async function runAutonomousAgent({
-//   systemPrompt,
-//   userMessage,
-//   history,
-//   onToken,
-//   onEvent
-// }: any) {
-//   let messages = [
-//     { role: "system", content: systemPrompt },
-//     ...history,
-//     { role: "user", content: userMessage }
-//   ];
+export async function runAutonomousAgent({
+  systemPrompt,
+  userMessage,
+  history,
+  onToken,
+  onEvent
+}: any) {
+  let messages = [
+    { role: "system", content: systemPrompt },
+    ...history,
+    { role: "user", content: userMessage }
+  ];
 
-//   onEvent?.("thinking", { text: "Understanding problem..." });
+  onEvent?.("thinking", { text: "Understanding problem..." });
 
-//   const ai = await callLLM(messages);
+  const ai = await callLLM(messages);
 
-//   const parsed = safeJsonParse(ai);
+  const parsed = safeJsonParse(ai);
 
-//   if (parsed?.action === "tool_call") {
-//     onEvent?.("tool", {
-//       name: parsed.tool,
-//       params: parsed.params
-//     });
+  if (parsed?.action === "tool_call") {
+    onEvent?.("tool", {
+      name: parsed.tool,
+      params: parsed.params
+    });
 
-//     const result = await executeTool(parsed.tool, parsed.params);
+    const result = await executeTool(parsed.tool, parsed.params);
 
-//     onEvent?.("thinking", { text: "Processing tool results..." });
+    onEvent?.("thinking", { text: "Processing tool results..." });
 
-//     const final = await callLLM([
-//       ...messages,
-//       { role: "tool", content: JSON.stringify(result) }
-//     ]);
+    const final = await callLLM([
+      ...messages,
+      { role: "tool", content: JSON.stringify(result) }
+    ]);
 
-//     return final;
-//   }
+    return final;
+  }
 
-//   return ai;
-// }
+  return ai;
+}

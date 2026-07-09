@@ -4,6 +4,8 @@ import aiChatSocket from "./aiChatSocket.js";
 import { socketAuthenticator } from "../middleware/socketAuthenticator.js";
 import { initAdminChat } from "./initAdminChat.js";
 import { initAssistantChat } from "./initAssistantChat.js";
+import { initCallSocket } from "./call/initCallSocket.js";
+import { initMediasoupSocket } from "./call/mediasoup.socket.js";
 
 let io: Server;
 
@@ -39,6 +41,16 @@ export function initializeSockets(server: any) {
 
   initProductSocket(io);
   aiChatSocket(io);
+
+  io.on("connection", (socket) => {
+    console.log("✅ User connected:", socket.id);
+    initCallSocket(io, socket);
+    initMediasoupSocket(io, socket);
+
+    socket.on("disconnect", () => {
+      console.log("❌ User disconnected:", socket.id);
+    });
+  });
 
   return io;
 }

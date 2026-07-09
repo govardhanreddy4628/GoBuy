@@ -12,7 +12,7 @@ import {
 import { v4 as uuid } from "uuid";
 import { getSockets } from "../lib/helper.js";
 import UserModel, { IUserDocument } from "../models/userModel.js";
-import ChatModel from "../models/chatModal.js";
+import ChatModel from "../models/chatModel.js";
 
 interface CustomSocket extends Socket {
   user: IUserDocument;

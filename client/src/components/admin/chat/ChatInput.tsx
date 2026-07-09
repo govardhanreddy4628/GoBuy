@@ -2,62 +2,88 @@ import { Smile, Paperclip, Mic, Send } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { Input } from "../../../ui/input";
 import { Button } from "../../../ui/button";
-import { useDispatch } from "react-redux";
 import EmojiPicker from "emoji-picker-react";
-import { Socket } from "socket.io-client";
+import { Dialog, DialogContent } from "../../../ui/dialog";
+import { FileUpload } from "./FileUpload";
+import { socket } from "../../admin/socket";
 
 const EVENTS = {
   START_TYPING: "START_TYPING",
   STOP_TYPING: "STOP_TYPING",
 };
 interface ChatInputProps {
-  onSendMessage: (data: { text?: string; file?: File | null }) => void;
-  socketRef: React.MutableRefObject<Socket | null>;
+  onSendMessage: (data: { text?: string; files?: File[] }) => void;
   selectedChatId?: string;
   disabled?: boolean;
+  chatMembers?: any[]; // Optional: Pass chat members if needed
 }
 
-export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled = false }: ChatInputProps) {
+export function ChatInput({ onSendMessage, selectedChatId, disabled = false, chatMembers }: ChatInputProps) {
   const [inputText, setInputText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [showFileUpload, setShowFileUpload] = useState(false);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emojiRef = useRef<HTMLDivElement | null>(null);
 
   //   // ✅ FIX: move socket listeners into useEffect
   useEffect(() => {
-    if (!socketRef?.current) return;
+    const handleStartTyping = (data: { chatId: string }) => {
+      if (data.chatId === selectedChatId) setIsTyping(true);
+    };
+    const handleStopTyping = (data: { chatId: string }) => {
+      if (data.chatId === selectedChatId) setIsTyping(false);
+    };
+    socket.on(EVENTS.START_TYPING, handleStartTyping);
+    socket.on(EVENTS.STOP_TYPING, handleStopTyping);
+    return () => {
+      socket?.off(EVENTS.START_TYPING, handleStartTyping);
+      socket?.off(EVENTS.STOP_TYPING, handleStopTyping);
+    };
+  }, [selectedChatId]);
 
-    const handleStartTyping = () => setIsTyping(true);
-    const handleStopTyping = () => setIsTyping(false);
+  useEffect(() => setIsTyping(false), [selectedChatId]); // reset on chat switch
 
-    socketRef.current.on(EVENTS.START_TYPING, handleStartTyping);
-    socketRef.current.on(EVENTS.STOP_TYPING, handleStopTyping);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiRef.current &&
+        !emojiRef.current.contains(event.target as Node)
+      ) {
+        setShowEmoji(false);
+      }
+    };
+
+    if (showEmoji) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
 
     return () => {
-      socketRef.current?.off(EVENTS.START_TYPING, handleStartTyping);
-      socketRef.current?.off(EVENTS.STOP_TYPING, handleStopTyping);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [socketRef]);
-
+  }, [showEmoji]);
 
   //const dispatch = useDispatch();
 
   const handleTyping = () => {
-    if (!socketRef?.current || !selectedChatId) return;
+    if (!selectedChatId) return;
 
-    socketRef.current.emit(EVENTS.START_TYPING, { chatId: selectedChatId });
+    socket.emit(EVENTS.START_TYPING, {
+      chatId: selectedChatId,
+      members: chatMembers,
+    });
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
     typingTimeoutRef.current = setTimeout(() => {
-      socketRef.current?.emit(EVENTS.STOP_TYPING, {
+      socket.emit(EVENTS.STOP_TYPING, {
         chatId: selectedChatId,
       });
     }, 1500);
@@ -65,16 +91,21 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
 
   // ✅ SEND HANDLER
   const handleSend = () => {
-    if (!inputText.trim() && !file) return;
+    if (!inputText.trim() && files.length === 0) return;
 
     onSendMessage({
       text: inputText.trim() || undefined,
-      file: file || null,
+      files
     });
 
     setInputText("");
-    setFile(null);
+    setFiles([]);
     setShowEmoji(false);
+  };
+
+  const handleFilesUploaded = (files: File[], caption: string) => {
+    onSendMessage({ text: caption, files });
+    setShowFileUpload(false);
   };
 
   const handleEmojiClick = (emojiData: any) => {
@@ -82,10 +113,15 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
   };
 
   // file select
-  const handleFileChange = (e: any) => {
-    if (e.target.files?.[0]) {
-      setFile(e.target.files[0]);
-    }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+
+    if (selectedFiles.length === 0) return;
+
+    setFiles((prev) => [...prev, ...selectedFiles]);
+
+    // ✅ OPEN DIALOG ONLY AFTER FILES SELECTED
+    setShowFileUpload(true);
   };
 
   // open file picker
@@ -93,7 +129,7 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
     fileRef.current?.click();
   };
 
-  // =========================
+  // ============ Voice Recording =============
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -113,7 +149,7 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
         const blob = new Blob(chunks, { type: "audio/webm" });
         const file = new File([blob], "voice.webm");
 
-        setFile(file);
+        setFiles((prev) => [...prev, file]);
       };
 
       recorder.start();
@@ -136,6 +172,7 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
     }
   };
 
+
   // const handleFileOpen = (e) => {
   //   // dispatch(setIsFileMenu(true));
   //   // setFileMenuAnchor(e.currentTarget);
@@ -145,7 +182,7 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
     <div className="p-4 border-t border-border bg-chat-input relative">
       {/* Emoji Picker */}
       {showEmoji && (
-        <div className="absolute bottom-16 right-4 z-50">
+        <div className="absolute bottom-16 right-4 z-50" ref={emojiRef}>
           <EmojiPicker onEmojiClick={handleEmojiClick} />
         </div>
       )}
@@ -155,6 +192,7 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
           type="file"
           ref={fileRef}
           hidden
+          multiple
           onChange={handleFileChange}
         />
         {/* Attachment button */}
@@ -186,8 +224,7 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
           </Button>
         </div>
 
-
-        {inputText.trim() || file ? (
+        {inputText.trim() || files.length > 0 ? (
           <Button
             onClick={handleSend}
             disabled={disabled}
@@ -201,13 +238,6 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
           </Button>
         )}
       </div>
-
-      {/* preview selected file */}
-      {file && (
-        <div className="mt-2 text-sm text-gray-500">
-          Selected: {file.name}
-        </div>
-      )}
 
       {/* Typing indicator */}
       {isTyping && (
@@ -224,255 +254,20 @@ export function ChatInput({ onSendMessage, socketRef, selectedChatId, disabled =
           </div>
         </div>
       )}
+
+      {/* File Upload Dialog */}
+      <Dialog open={showFileUpload} onOpenChange={setShowFileUpload}>
+        <DialogContent className="z-50 bg-popover max-w-2xl min-h-[80vh]">
+          <FileUpload
+            onFilesUploaded={handleFilesUploaded}
+            onClose={() => setShowFileUpload(false)}
+            inputText={inputText}
+            setInputText={setInputText}
+            files={files}
+            setFiles={setFiles}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
-
-
-
-
-
-
-
-// import { Smile, Paperclip, Mic, Send } from "lucide-react";
-// import { useEffect, useRef, useState } from "react";
-// import EmojiPicker from "emoji-picker-react";
-// import { Input } from "../../../ui/input";
-// import { Button } from "../../../ui/button";
-// import { Socket } from "socket.io-client";
-
-// const EVENTS = {
-//   START_TYPING: "START_TYPING",
-//   STOP_TYPING: "STOP_TYPING",
-// };
-
-// type MessagePayload =
-//   | { type: "text"; content: string }
-//   | { type: "file"; content: string; fileName?: string }
-//   | { type: "audio"; content: string };
-
-// interface ChatInputProps {
-//   onSendMessage: (message: MessagePayload) => void;
-//   socketRef: React.MutableRefObject<Socket | null>;
-//   selectedChatId?: string;
-//   disabled?: boolean;
-// }
-
-// export function ChatInput({
-//   onSendMessage,
-//   socketRef,
-//   selectedChatId,
-//   disabled = false,
-// }: ChatInputProps) {
-//   const [message, setMessage] = useState("");
-//   const [isTyping, setIsTyping] = useState(false);
-//   const [showEmoji, setShowEmoji] = useState(false);
-//   const [recording, setRecording] = useState(false);
-
-//   const fileRef = useRef<HTMLInputElement | null>(null);
-//   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-
-//   // =========================
-//   // Typing listeners
-//   // =========================
-//   useEffect(() => {
-//     if (!socketRef?.current) return;
-
-//     const handleStartTyping = () => setIsTyping(true);
-//     const handleStopTyping = () => setIsTyping(false);
-
-//     socketRef.current.on(EVENTS.START_TYPING, handleStartTyping);
-//     socketRef.current.on(EVENTS.STOP_TYPING, handleStopTyping);
-
-//     return () => {
-//       socketRef.current?.off(EVENTS.START_TYPING, handleStartTyping);
-//       socketRef.current?.off(EVENTS.STOP_TYPING, handleStopTyping);
-//     };
-//   }, [socketRef]);
-
-//   // =========================
-//   // Emit typing
-//   // =========================
-//   const handleTyping = () => {
-//     if (!socketRef?.current || !selectedChatId) return;
-
-//     socketRef.current.emit(EVENTS.START_TYPING, {
-//       chatId: selectedChatId,
-//     });
-
-//     setTimeout(() => {
-//       socketRef.current?.emit(EVENTS.STOP_TYPING, {
-//         chatId: selectedChatId,
-//       });
-//     }, 1500);
-//   };
-
-//   // =========================
-//   // SEND TEXT MESSAGE
-//   // =========================
-//   const handleSend = () => {
-//     if (!message.trim() || disabled) return;
-
-//     onSendMessage({
-//       type: "text",
-//       content: message.trim(),
-//     });
-
-//     setMessage("");
-//     setShowEmoji(false);
-//   };
-
-//   // =========================
-//   // EMOJI
-//   // =========================
-//   const handleEmojiClick = (emojiData: any) => {
-//     setMessage((prev) => prev + emojiData.emoji);
-//   };
-
-//   // =========================
-//   // FILE UPLOAD
-//   // =========================
-//   const handleFileUpload = async (file: File) => {
-//     try {
-//       const formData = new FormData();
-//       formData.append("file", file);
-
-//       const res = await fetch("/upload", {
-//         method: "POST",
-//         body: formData,
-//       });
-
-//       const data = await res.json();
-
-//       onSendMessage({
-//         type: "file",
-//         content: data.url,
-//         fileName: file.name,
-//       });
-//     } catch (err) {
-//       console.error("File upload failed", err);
-//     }
-//   };
-
-//   // =========================
-//   // VOICE RECORDING
-//   // =========================
-//   const startRecording = async () => {
-//     try {
-//       const stream = await navigator.mediaDevices.getUserMedia({
-//         audio: true,
-//       });
-
-//       const recorder = new MediaRecorder(stream);
-//       mediaRecorderRef.current = recorder;
-
-//       const chunks: Blob[] = [];
-
-//       recorder.ondataavailable = (e) => {
-//         if (e.data.size > 0) chunks.push(e.data);
-//       };
-
-//       recorder.onstop = async () => {
-//         const blob = new Blob(chunks, { type: "audio/webm" });
-//         const file = new File([blob], "voice.webm");
-
-//         await handleFileUpload(file);
-//       };
-
-//       recorder.start();
-//       setRecording(true);
-//     } catch (err) {
-//       console.error("Mic error", err);
-//     }
-//   };
-
-//   const stopRecording = () => {
-//     mediaRecorderRef.current?.stop();
-//     setRecording(false);
-//   };
-
-//   // =========================
-//   // UI
-//   // =========================
-//   return (
-//     <div className="p-4 border-t bg-chat-input relative">
-//       {/* Emoji Picker */}
-//       {showEmoji && (
-//         <div className="absolute bottom-16 left-2 z-50">
-//           <EmojiPicker onEmojiClick={handleEmojiClick} />
-//         </div>
-//       )}
-
-//       {/* Hidden File Input */}
-//       <input
-//         type="file"
-//         hidden
-//         ref={fileRef}
-//         onChange={(e) => {
-//           if (e.target.files?.[0]) {
-//             handleFileUpload(e.target.files[0]);
-//           }
-//         }}
-//       />
-
-//       <div className="flex items-end gap-3">
-//         {/* File Button */}
-//         <Button
-//           variant="ghost"
-//           size="sm"
-//           onClick={() => fileRef.current?.click()}
-//         >
-//           <Paperclip className="h-4 w-4" />
-//         </Button>
-
-//         {/* Input */}
-//         <div className="flex-1 relative">
-//           <Input
-//             placeholder="Type a message..."
-//             value={message}
-//             onChange={(e) => {
-//               setMessage(e.target.value);
-//               handleTyping();
-//             }}
-//             disabled={disabled}
-//             className="pr-10"
-//           />
-
-//           {/* Emoji Button */}
-//           <Button
-//             type="button"
-//             variant="ghost"
-//             size="sm"
-//             onClick={() => setShowEmoji((prev) => !prev)}
-//             className="absolute right-2 top-1/2 -translate-y-1/2"
-//           >
-//             <Smile className="h-4 w-4" />
-//           </Button>
-//         </div>
-
-//         {/* Send / Mic */}
-//         {message.trim() ? (
-//           <Button onClick={handleSend}>
-//             <Send className="h-4 w-4" />
-//           </Button>
-//         ) : (
-//           <Button
-//             variant={recording ? "destructive" : "ghost"}
-//             size="sm"
-//             onClick={recording ? stopRecording : startRecording}
-//           >
-//             <Mic className="h-4 w-4" />
-//           </Button>
-//         )}
-//       </div>
-
-//       {/* Typing indicator */}
-//       {isTyping && (
-//         <p className="text-xs mt-2 text-muted-foreground">
-//           Someone is typing...
-//         </p>
-//       )}
-//     </div>
-//   );
-// }

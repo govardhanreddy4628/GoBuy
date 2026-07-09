@@ -48,9 +48,13 @@ import logoRouter from "./routes/logoRoutes.js";
 const app = express();
 
 // ---------------- CORS ----------------
+const prodOrigins = process.env.CLIENT_URLS_PROD
+  ? process.env.CLIENT_URLS_PROD.split(",").filter(Boolean)
+  : [];
+
 const allowedOrigins = [
   process.env.CLIENT_URL_DEV,
-  process.env.CLIENT_URL_PROD,
+  ...prodOrigins,
 ].filter(Boolean);
 
 const isProd = process.env.NODE_ENV === "production";

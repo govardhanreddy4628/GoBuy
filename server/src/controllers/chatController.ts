@@ -1,7 +1,7 @@
 import { Response, RequestHandler, NextFunction } from "express";
 import asyncHandler from "express-async-handler";
 import UserModel, { IUserDocument } from "../models/userModel.js";
-import ChatModel from "../models/chatModal.js";
+import ChatModel from "../models/chatModel.js";
 import { Message } from "../models/MessageModel.js";
 import { ApiError } from "../utils/ApiError.js";
 import { TryCatch } from "../utils/tryCatch.js";
@@ -22,18 +22,18 @@ import {
 //   user?: IUserDocument;
 // }         //not needed this as we have already defined it globally in express.d.ts file
 
-// const emitEvent = (
-//   req: Request,
-//   event: string,
-//   users: string[],
-//   data?: any
-// ): void => {
-//   const io = (req.app as any).get("io");
-//   if (!users || !Array.isArray(users)) return;
-//   const usersSocket = getSockets(users);
-//   if (!usersSocket.length) return;
-//   io.to(usersSocket).emit(event, data);
-// };
+const emitEvent = (
+  req: Request,
+  event: string,
+  users: string[],
+  data?: any,
+): void => {
+  const io = (req.app as any).get("io");
+  if (!users || !Array.isArray(users)) return;
+  const usersSocket = getSockets(users);
+  if (!usersSocket.length) return;
+  io.to(usersSocket).emit(event, data);
+};
 
 export const fetchAllChats: RequestHandler = async (req: any, res) => {
   try {
@@ -324,22 +324,22 @@ const createGroupChat = async (req: any, res: Response) => {
   }
 };
 
-// export const uploadChatMediaController = async (req, res) => {
-//   try {
-//     const files = req.files;
+export const uploadChatMediaController = async (req, res) => {
+  try {
+    const files = req.files;
 
-//     if (!files || files.length === 0) {
-//       return res.status(400).json({ message: "No files" });
-//     }
+    if (!files || files.length === 0) {
+      return res.status(400).json({ message: "No files" });
+    }
 
-//     const media = await uploadMultipleChatMedia(files);
+    const media = await uploadMultipleChatMedia(files);
 
-//     return res.json(media);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: "Upload failed" });
-//   }
-// };
+    return res.json(media);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Upload failed" });
+  }
+};
 
 // const getMyChats = TryCatch(async (req, res, next) => {
 //   const chats = await ChatModel.find({
@@ -372,26 +372,6 @@ const createGroupChat = async (req: any, res: Response) => {
 //   res.status(200).json({
 //     success: true,
 //     chats: transformedChats,
-//   });
-// });
-
-// const getMyGroups = TryCatch(async (req, res, next) => {
-//   const chats = await ChatModel.find({
-//     members: req.user._id,
-//     isGroup: true,
-//     groupAdmins: req.user._id,
-//   }).populate("members", "fullName avatar");
-
-//   const groups = chats.map(({ members, _id, isGroup, chatName }) => ({
-//     _id,
-//     isGroup,
-//     name: chatName,
-//     avatar: members.slice(0, 3).map((m) => m.avatar),
-//   }));
-
-//   res.status(200).json({
-//     success: true,
-//     groups,
 //   });
 // });
 
@@ -529,168 +509,216 @@ const createGroupChat = async (req: any, res: Response) => {
 // });
 
 // ---------------- Rename Group ----------------
-// const renameGroup: RequestHandler = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const chatId = req.params.id;
-//     const { name } = req.body;
+const renameGroup: RequestHandler = asyncHandler(async (req, res, next) => {
+  const chatId = req.params.id;
+  const { name } = req.body;
 
-//     const chat = await ChatModel.findById(chatId);
+  if (!name || name.trim().length < 2) {
+    return next(new ApiError(400, "Invalid group name"));
+  }
 
-//     if (!chat) return next(new ApiError(404, "Chat not found"));
+  const chat = await ChatModel.findById(chatId);
 
-//     if (!chat.isGroup)
-//       return next(new ApiError(400, "This is not a group chat"));
+  if (!chat) return next(new ApiError(404, "Chat not found"));
+  if (!chat.isGroup) return next(new ApiError(400, "Not a group"));
 
-//     if (!chat.groupAdmin) return next(new ApiError(400, "Group admin missing"));
+  // ✅ FIX: check inside groupAdmins array
+  if (
+    !chat.groupAdmins.some((a) => a.toString() === req.user!._id.toString())
+  ) {
+    return next(new ApiError(403, "Only admins can rename group"));
+  }
 
-//     if (chat.groupAdmin.toString() !== req.user!._id.toString())
-//       return next(new ApiError(403, "You are not allowed to rename the group"));
+  chat.chatName = name.trim();
+  await chat.save();
 
-//     chat.chatName = name;
+  emitEvent(req, REFETCH_CHATS, chat.members);
 
-//     await chat.save();
-
-//     emitEvent(
-//       req,
-//       REFETCH_CHATS,
-//       chat.members.map((m) => m.toString()),
-//     );
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Group renamed successfully",
-//     });
-//   },
-// );
+  res.json({ success: true });
+});
 
 // --------------------add members to group--------------
-// const addMembersToGroup: RequestHandler = TryCatch(async (req, res, next) => {
-//   const { chatId, members } = req.body;
+const addMembersToGroup: RequestHandler = TryCatch(async (req, res, next) => {
+  const { chatId, newMembers: members } = req.body;
 
-//   const chat = await ChatModel.findById(chatId);
+  const chat = await ChatModel.findById(chatId);
 
-//   //   if (!chat) return next(new ErrorHandler("Chat not found", 404));
-//   if (!chat) return next(new ApiError(404, "Chat not found"));
+  if (!chat) return next(new ApiError(404, "Chat not found"));
+  if (!chat.isGroup) return next(new ApiError(400, "Not a group"));
 
-//   if (!chat.isGroup) return next(new ApiError(400, "This is not a group chat"));
+  // ✅ Check admin
+  if (!chat.groupAdmins.includes(req.user!._id)) {
+    return next(new ApiError(403, "Only admins can add members"));
+  }
 
-//   if (!chat.groupAdmin) return next(new ApiError(400, "Group admin missing"));
+  const users = await UserModel.find({ _id: { $in: members } });
 
-//   if (chat.groupAdmin.toString() !== req.user!._id.toString())
-//     return next(new ApiError(403, "You are not allowed to add members"));
+  const newMembers = users.filter((u) => !chat.members.includes(u._id));
 
-//   const users = await UserModel.find({
-//     _id: { $in: members },
-//   });
+  if (chat.members.length + newMembers.length > 100) {
+    return next(new ApiError(400, "Group limit reached"));
+  }
 
-//   const uniqueMembers = users
-//     .filter((u) => !chat.members.some((m) => m.toString() === u._id.toString()))
-//     .map((u) => u._id);
+  chat.members.push(...newMembers.map((u) => u._id));
+  await chat.save();
 
-//   if (chat.members.length + uniqueMembers.length > 100)
-//     return next(new ApiError(400, "Group limit reached"));
+  emitEvent(req, ALERT, chat.members, {
+    message: `${newMembers.map((u) => u.fullName).join(", ")} added`,
+    chatId,
+  });
 
-//   chat.members.push(...uniqueMembers);
-//   await chat.save();
+  emitEvent(req, REFETCH_CHATS, chat.members);
 
-//   const names = users.map((u) => u.fullName).join(", ");
-
-//   emitEvent(req, ALERT, chat.members, `${names} has been added in the group`);
-
-//   emitEvent(req, REFETCH_CHATS, chat.members);
-
-//   return res.status(200).json({
-//     success: true,
-//     message: "Members added successfully",
-//   });
-// });
+  res.json({ success: true });
+});
 
 // ---------------- Remove From Group ----------------
-// const removeMemberFromGroup: RequestHandler = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const { chatId, userId } = req.body;
+const removeMemberFromGroup: RequestHandler = TryCatch(
+  async (req, res, next) => {
+    const { chatId, memberId } = req.body;
 
-//     const [chat, userThatWillBeRemoved] = await Promise.all([
-//       ChatModel.findById(chatId),
-//       UserModel.findById(userId, "fullName"),
-//     ]);
+    const chat = await ChatModel.findById(chatId);
 
-//     if (!chat) return next(new ApiError(404, "Chat not found"));
+    if (!chat) return next(new ApiError(404, "Chat not found"));
+    if (!chat.isGroup) return next(new ApiError(400, "Not a group"));
 
-//     if (!chat.isGroup)
-//       return next(new ApiError(400, "This is not a group chat"));
+    if (!chat.groupAdmins.includes(req.user!._id)) {
+      return next(new ApiError(403, "Only admins can remove members"));
+    }
 
-//     if (!chat.groupAdmin) return next(new ApiError(400, "Group admin missing"));
+    if (!chat.members.includes(memberId)) {
+      return next(new ApiError(400, "User not in group"));
+    }
 
-//     if (chat.groupAdmin.toString() !== req.user!._id.toString())
-//       return next(new ApiError(403, "You are not allowed to add members"));
+    // ❗ Prevent removing last member
+    if (chat.members.length <= 1) {
+      return next(new ApiError(400, "Group cannot be empty"));
+    }
 
-//     if (chat.members.length <= 3)
-//       return next(new ApiError(400, "Group must have at least 3 members"));
+    chat.members = chat.members.filter((id) => id.toString() !== memberId);
 
-//     const allChatMembers = chat.members.map((i) => i.toString());
+    // ❗ If removed user was admin → remove from admins too
+    chat.groupAdmins = chat.groupAdmins.filter(
+      (id) => id.toString() !== memberId,
+    );
 
-//     chat.members = chat.members.filter(
-//       (member) => member.toString() !== userId.toString(),
-//     );
+    await chat.save();
 
-//     await chat.save();
+    emitEvent(req, ALERT, chat.members, {
+      message: "Member removed",
+      chatId,
+    });
 
-//     emitEvent(req, ALERT, chat.members, {
-//       message: `${userThatWillBeRemoved.fullName} has been removed from the group`,
-//       chatId,
-//     });
+    emitEvent(req, REFETCH_CHATS, chat.members);
 
-//     emitEvent(req, REFETCH_CHATS, allChatMembers);
+    res.json({ success: true });
+  },
+);
 
-//     return res.status(200).json({
-//       success: true,
-//       message: "Member removed successfully",
-//     });
-//   },
-// );
+const leaveGroup: RequestHandler = TryCatch(async (req, res, next) => {
+  const chatId = req.params.id;
+  const userId = req.user!._id.toString();
 
-// const leaveGroup = TryCatch(async (req, res, next) => {
-//   const chatId = req.params.id;
+  const chat = await ChatModel.findById(chatId);
 
-//   const chat = await ChatModel.findById(chatId);
+  if (!chat) return next(new ApiError(404, "Chat not found"));
+  if (!chat.isGroup) return next(new ApiError(400, "Not a group"));
 
-//   if (!chat) return next(new ApiError(404, "Chat not found"));
+  // ❗ Check if user is actually in group
+  if (!chat.members.some((m) => m.toString() === userId)) {
+    return next(new ApiError(400, "You are not a member of this group"));
+  }
 
-//   if (!chat.isGroup) return next(new ApiError(400, "This is not a group chat"));
+  // Remove user from members
+  const remainingMembers = chat.members.filter((m) => m.toString() !== userId);
 
-//   const remainingMembers = chat.members.filter(
-//     (member) => member.toString() !== req.user!._id.toString(),
-//   );
+  if (remainingMembers.length < 3)
+    return next(new ApiError(400, "Group must have at least 3 members"));
 
-//   if (remainingMembers.length < 3)
-//     return next(new ApiError(400, "Group must have at least 3 members"));
+  const wasAdmin = chat.groupAdmins.some((a) => a.toString() === userId);
 
-//   if (!chat.groupAdmin) return next(new ApiError(400, "Group admin missing"));
+  // Remove from admins
+  chat.groupAdmins = chat.groupAdmins.filter((a) => a.toString() !== userId);
 
-//   if (chat.groupAdmin.toString() === req.user!._id.toString()) {
-//     const randomElement = Math.floor(Math.random() * remainingMembers.length);
-//     const newGroupAdmin = remainingMembers[randomElement];
-//     chat.groupAdmin = newGroupAdmin;
-//   }
+  // 🔥 If no admins left → assign random admin
+  if (wasAdmin && chat.groupAdmins.length === 0 && chat.members.length > 0) {
+    const randomIndex = Math.floor(Math.random() * chat.members.length);
+    chat.groupAdmins.push(chat.members[randomIndex]);
+  }
 
-//   chat.members = remainingMembers;
+  // ❗ If no members left → delete group
+  if (remainingMembers.length === 0) {
+    await chat.deleteOne();
+    return res.json({ success: true, message: "Group deleted" });
+  }
 
-//   const [user] = await Promise.all([
-//     UserModel.findById(req.user!._id, "fullName"),
-//     chat.save(),
-//   ]);
+  const user = await UserModel.findById(userId, "fullName");
 
-//   emitEvent(req, ALERT, chat.members, {
-//     chatId,
-//     message: `User ${user?.fullName} has left the group`,
-//   });
+  await chat.save();
 
-//   return res.status(200).json({
-//     success: true,
-//     message: "Leave Group Successfully",
-//   });
-// });
+  emitEvent(req, ALERT, chat.members, {
+    chatId,
+    message: `${user?.fullName} left the group`,
+  });
+
+  emitEvent(req, REFETCH_CHATS, chat.members);
+
+  res.json({ success: true });
+});
+
+const toggleGroupAdmin: RequestHandler = TryCatch(async (req, res, next) => {
+  const { chatId, memberId } = req.body;
+  const currentUserId = req.user!._id.toString();
+
+  const chat = await ChatModel.findById(chatId);
+
+  if (!chat) return next(new ApiError(404, "Chat not found"));
+  if (!chat.isGroup) return next(new ApiError(400, "Not a group"));
+
+  // ✅ Only admins can toggle
+  if (!chat.groupAdmins.some(a => a.toString() === currentUserId)) {
+    return next(new ApiError(403, "Only admins can change roles"));
+  }
+
+  // ❗ Check member exists
+  if (!chat.members.some(m => m.toString() === memberId)) {
+    return next(new ApiError(400, "User is not a member"));
+  }
+
+  const isAlreadyAdmin = chat.groupAdmins.some(
+    a => a.toString() === memberId
+  );
+
+  if (isAlreadyAdmin) {
+    // ❗ Prevent removing last admin
+    if (chat.groupAdmins.length === 1) {
+      return next(new ApiError(400, "Group must have at least one admin"));
+    }
+
+    // 🔻 Demote
+    chat.groupAdmins = chat.groupAdmins.filter(
+      a => a.toString() !== memberId
+    );
+  } else {
+    // 🔺 Promote
+    chat.groupAdmins.push(memberId);
+  }
+
+  await chat.save();
+
+  const user = await UserModel.findById(memberId, "fullName");
+
+  emitEvent(req, ALERT, chat.members, {
+    chatId,
+    message: isAlreadyAdmin
+      ? `${user?.fullName} is no longer an admin`
+      : `${user?.fullName} is now an admin`,
+  });
+
+  emitEvent(req, REFETCH_CHATS, chat.members);
+
+  res.json({ success: true });
+});
 
 // const sendAttachments = TryCatch(async (req, res, next) => {
 //   const { chatId } = req.body;
@@ -786,96 +814,72 @@ const createGroupChat = async (req: any, res: Response) => {
 //   });
 // });
 
-const allMessages = TryCatch(async (req, res) => {
-  const messages = await Message.find({})
-    .populate("sender", "fullName avatar")
-    .populate("chat", "isGroup");
+// const allMessages = TryCatch(async (req, res) => {
+//   const messages = await Message.find({})
+//     .populate("sender", "fullName avatar")
+//     .populate("chat", "isGroup");
 
-  const transformedMessages = messages.map((msg) => {
-    const { content, attachments, _id, sender, createdAt, chat } = msg;
+//   const transformedMessages = messages.map((msg) => {
+//     const { content, attachments, _id, sender, createdAt, chat } = msg;
 
-    return {
-      _id,
-      attachments,
-      content,
-      createdAt,
-      chat: chat?._id,
-      isGroup: chat?.isGroup,
+//     return {
+//       _id,
+//       attachments,
+//       content,
+//       createdAt,
+//       chat: chat?._id,
+//       isGroup: chat?.isGroup,
 
-      sender: sender
-        ? {
-            _id: sender._id,
-            name: sender.fullName,
-            avatar: sender.avatar,
-          }
-        : null,
-    };
+//       sender: sender
+//         ? {
+//             _id: sender._id,
+//             name: sender.fullName,
+//             avatar: sender.avatar,
+//           }
+//         : null,
+//     };
+//   });
+
+//   res.status(200).json({
+//     success: true,
+//     messages: transformedMessages,
+//   });
+// });
+
+
+
+const allUsers = TryCatch(async (req, res) => {
+  const currentUserId = req.user._id;
+  const users = await UserModel.find({
+    _id: { $ne: currentUserId }, // ✅ exclude current user
+    role: { $in: ["ADMIN", "SUPER-ADMIN"] },
+    status: "ACTIVE", // optional but recommended
   });
+
+  const transformedUsers = await Promise.all(
+    users.map(async (user) => {
+      const { fullName, avatar, _id } = user;
+
+      const [groups, friends] = await Promise.all([
+        ChatModel.countDocuments({ isGroup: true, members: _id }),
+        ChatModel.countDocuments({ isGroup: false, members: _id }),
+      ]);
+
+      return {
+        fullName,
+        avatar,
+        _id,
+        groups,
+        friends,
+      };
+    }),
+  );
 
   res.status(200).json({
-    success: true,
-    messages: transformedMessages,
+    status: "success",
+    users: transformedUsers,
   });
 });
-
-// const allUsers = TryCatch(async (req, res) => {
-//   const users = await UserModel.find({});
-
-//   const transformedUsers = await Promise.all(
-//     users.map(async (user) => {
-//       const { fullName, username, avatar, _id } = user;
-
-//       const [groups, friends] = await Promise.all([
-//         ChatModel.countDocuments({ isGroup: true, members: _id }),
-//         ChatModel.countDocuments({ isGroup: false, members: _id }),
-//       ]);
-
-//       return {
-//         name: fullName,
-//         username,
-//         avatar,
-//         _id,
-//         groups,
-//         friends,
-//       };
-//     })
-//   );
-
-//   res.status(200).json({
-//     status: "success",
-//     users: transformedUsers,
-//   });
-// });
-
-// const allUsers = TryCatch(async (req, res) => {
-//   const users = await UserModel.find({
-//     role: { $in: ["ADMIN", "SUPER-ADMIN"] },
-//   });
-
-//   const transformedUsers = await Promise.all(
-//     users.map(async (user) => {
-//       const { fullName, avatar, _id } = user;
-
-//       const [groups, friends] = await Promise.all([
-//         ChatModel.countDocuments({ isGroup: true, members: _id }),
-//         ChatModel.countDocuments({ isGroup: false, members: _id }),
-//       ]);
-
-//       return {
-//         fullName,
-//         avatar,
-//         _id,
-//         groups,
-//         friends,
-//       };
-//     }),
-//   );
-
-//   res.status(200).json({
-//     status: "success",
-//     users: transformedUsers,
-//   });
-// });
 
 // const searchUser = TryCatch(async (req, res) => {
 //   const { name = "" } = req.query;
@@ -996,6 +1000,10 @@ export {
   fetchChats,
   allMessages,
   allMessagesOfChat,
+  allUsers,
+  renameGroup,
+  addMembersToGroup,
+  removeMemberFromGroup
 };
 
 // const getMyNotifications = TryCatch(async (req, res) => {

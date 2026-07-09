@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import io from 'socket.io-client';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatArea } from './ChatArea';
 import { toast } from "../../../hooks/use-toast";
@@ -11,10 +10,11 @@ import { Input } from "../../../ui/input";
 import { ScrollArea } from "../../../ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../ui/avatar";
 import { useAuth } from '../../../context/authContext';
-import { getAccessToken, POST } from '../../../api/api_utility';
+import { DELETE, GET, getAccessToken, POST, PUT } from '../../../api/api_utility';
 import { MessageFromApi } from '../types/chat/message.api';
 import { ChatFromApi } from '../types/chat/chat.api';
 import axios from "axios";
+import { socket, connectSocket } from "../../admin/socket";
 
 const EVENTS = {
   NEW_MESSAGE: "NEW_MESSAGE",
@@ -62,10 +62,17 @@ interface User {
   isOnline?: boolean;
 }
 
-const Chat = () => {
-  // ✅ Infer the correct type from the io() return
-  const socketRef = useRef<ReturnType<typeof io> | null>(null);
+export interface Member {
+  id: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+  isOnline?: boolean;
+  isAdmin?: boolean;
+  isYou?: boolean;
+}
 
+const Chat = () => {
   const [selectedChatId, setSelectedChatId] = useState<string>();
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
@@ -114,8 +121,8 @@ const Chat = () => {
   const [groupName, setGroupName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [creatingChat, setCreatingChat] = useState(false);
-
-  console.log(isConnected)
+  // Draft chat: selected but not yet visible in sidebar until first message is sent
+  const [draftChat, setDraftChat] = useState<Chat | null>(null);
 
   function getLastMessagePreview(message: Message): string {
     if (!message) return "";
@@ -178,7 +185,6 @@ const Chat = () => {
             const otherUser = chat.members?.find(
               (m: any) => m._id !== currentUserId
             );
-
             chatName = otherUser?.fullName || "Unknown";
             chatAvatar = otherUser?.avatar;
           }
@@ -198,13 +204,11 @@ const Chat = () => {
             isOnline: false
           };
         });
-
         setChats(formatted);
       } catch (err) {
         console.error("fetchChats error:", err);
       }
     };
-
     fetchChats();
   }, [currentUserId, token]);
 
@@ -219,9 +223,7 @@ const Chat = () => {
           { credentials: "include", headers: { Authorization: `Bearer ${token}` } }
         );
         const data = await res.json();
-
         const formatMessage: Message[] = data.map((msg: MessageFromApi) => ({
-
           id: msg._id,
           chatID: msg.chatId,
           text: msg.text,
@@ -235,24 +237,20 @@ const Chat = () => {
           isRead: msg.readBy?.some(
             (r) => (typeof r.user === "string" ? r.user : r.user._id) === currentUserId
           ),
-
           status: msg.status,
           createdAt: new Date(msg.createdAt),
         }));
-
         setMessages(prev => ({ ...prev, [selectedChatId]: formatMessage }));
       } catch (err) {
         console.error("fetchMessages error:", err);
       }
     };
-
     fetchMessages();
   }, [selectedChatId, currentUserId, token]);
 
   useEffect(() => {
-    if (!selectedChatId || !socketRef.current) return;
-
-    socketRef.current.emit("MARK_SEEN", {
+    if (!selectedChatId || !socket) return;
+    socket.emit("MARK_SEEN", {
       chatId: selectedChatId,
       userId: currentUserId,
     });
@@ -260,12 +258,7 @@ const Chat = () => {
 
   // ✅ SOCKET CONNECTION
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL_LOCAL as string;
 
-    if (!backendUrl) {
-      console.error('Backend URL is not defined.');
-      return;
-    }
     // if (!currentUserId) {
     //   console.error('User ID is not available.');
     //   return;
@@ -273,38 +266,21 @@ const Chat = () => {
 
     if (!currentUserId) return; // silently wait
 
-    socketRef.current = io(backendUrl + "/admin", {
-      auth: {
-        token,
-      },
-      withCredentials: true, // Add this at the top level
-      transports: ["websocket", "polling"], // Add polling as fallback
-      transportOptions: {
-        websocket: {
-          withCredentials: true,
-        },
-      },
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-    });
+    // ✅ CONNECT SOCKET WITH TOKEN
+    connectSocket();
 
-
-    const sock = socketRef.current;
-
-    sock.on("connect", () => {
-      console.log("🟢 Connected to socket", sock.id);
+    socket.on("connect", () => {
+      console.log("🟢 Connected to socket", socket.id);
       setIsConnected(true);
     });
-    sock.on("disconnect", () => {
+    socket.on("disconnect", () => {
       console.log("🔴 Disconnected from socket");
       setIsConnected(false);
     });
 
     // Listen for icoming messages or Receive message
-    sock.on(EVENTS.NEW_MESSAGE, ({ chatId, message, chat: incomingChat }) => {
+    socket.on(EVENTS.NEW_MESSAGE, ({ chatId, message, chat: incomingChat }) => {
       const realChatId = chatId.toString();
-
       const formatted: Message = {
         id: message._id,
         text: message.text,
@@ -322,9 +298,7 @@ const Chat = () => {
       // Update messages — migrate any pending temp entry to real chatId
       setMessages((prev) => {
         const next: Record<string, Message[]> = { ...prev };
-
         const existing = next[realChatId] ?? [];
-
         let updated = [...existing];
 
         // ✅ STEP 1: FIND MATCHING OPTIMISTIC MESSAGE
@@ -346,12 +320,8 @@ const Chat = () => {
         } else {
           // ✅ NORMAL MESSAGE (OTHER USER)
           const alreadyExists = updated.some((m) => m.id === message._id);
-
-          if (!alreadyExists) {
-            updated.push(formatted);
-          }
+          if (!alreadyExists) { updated.push(formatted); }
         }
-
         next[realChatId] = updated;
         return next;
       });
@@ -380,7 +350,6 @@ const Chat = () => {
             const otherUser = incomingChat?.members?.find(
               (m: any) => (m._id ?? m) !== currentUserId
             );
-
             chatName = otherUser?.fullName || chatName;
             chatAvatar = otherUser?.avatar || chatAvatar;
           }
@@ -429,7 +398,6 @@ const Chat = () => {
             members: incomingChat?.members?.map((m: any) => m._id ?? m),
             createdAt: incomingChat?.createdAt,
           };
-
           return [newChat, ...prev];
         }
         // ✅ CASE 3: normal update
@@ -450,7 +418,7 @@ const Chat = () => {
 
     // ✅ ALERT (unread count)
     // Only increment unread for chats that are NOT currently selected
-    sock.on(EVENTS.NEW_MESSAGE_ALERT, ({ chatId }) => {
+    socket.on(EVENTS.NEW_MESSAGE_ALERT, ({ chatId }) => {
       setSelectedChatId((activeChatId) => {
         if (activeChatId !== chatId.toString()) {
           setChats((prev) =>
@@ -466,7 +434,7 @@ const Chat = () => {
     });
 
     // ── Online users ──────────────────
-    sock.on(EVENTS.ONLINE_USERS, (users: string[]) => {
+    socket.on(EVENTS.ONLINE_USERS, (users: string[]) => {
       setOnlineUsers(users);
       setChats((prev) =>
         prev.map((c) => ({
@@ -481,18 +449,18 @@ const Chat = () => {
     });
 
     // ✅ ERROR HANDLING
-    sock.on("error", (err: { message: string }) => {
+    socket.on("error", (err: { message: string }) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     });
 
     return () => {
-      sock.off("connect");
-      sock.off("disconnect");
-      sock.off(EVENTS.NEW_MESSAGE);
-      sock.off(EVENTS.NEW_MESSAGE_ALERT);
-      sock.off(EVENTS.ONLINE_USERS);
-      sock.off("error");
-      sock.disconnect();
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off(EVENTS.NEW_MESSAGE);
+      socket.off(EVENTS.NEW_MESSAGE_ALERT);
+      socket.off(EVENTS.ONLINE_USERS);
+      socket.off("error");
+      socket.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]); // only re-run if user changes
@@ -501,14 +469,14 @@ const Chat = () => {
   // ─── Emit CHAT_JOINED / CHAT_LEAVED on chat switch ────────────────────────
   const prevChatRef = useRef<string | undefined>();
   useEffect(() => {
-    if (!socketRef.current) return;
+    if (!socket) return;
 
     const prevId = prevChatRef.current;
     const prevChat = chats.find((c) => c.id === prevId);
 
     // Leave previous chat
     if (prevId && prevChat) {
-      socketRef.current.emit(EVENTS.CHAT_LEAVED, {
+      socket.emit(EVENTS.CHAT_LEAVED, {
         userId: currentUserId,
         members: prevChat.members ?? [],
       });
@@ -516,7 +484,7 @@ const Chat = () => {
 
     // Join new chat
     if (selectedChatId && selectedChat) {
-      socketRef.current.emit(EVENTS.CHAT_JOINED, {
+      socket.emit(EVENTS.CHAT_JOINED, {
         userId: currentUserId,
         members: selectedChat.members ?? [],
         chatId: selectedChatId,
@@ -538,16 +506,11 @@ const Chat = () => {
     const fetchUsers = async () => {
       setLoadingUsers(true);
       try {
-        const res = await fetch("http://localhost:8080/api/v1/chat/users", { credentials: "include" });
+        const res = await GET("/api/v1/chat/users");
+        //if (!res.data.ok) { throw new Error("Failed to fetch users"); }
+        console.log("users list:" + res.data)
 
-        if (!res.ok) {
-          throw new Error("Failed to fetch users");
-        }
-
-        const data = await res.json();
-        console.log(data)
-
-        setAllUsers(data.users); // make sure backend returns array
+        setAllUsers(res.data?.users || []); // make sure backend returns array
       } catch (error) {
         console.error("Error fetching users:", error);
         toast({ title: "Error", description: "Failed to load users" });
@@ -673,15 +636,19 @@ const Chat = () => {
         }
 
         if (memberIds.length < 2) {
-          throw new Error("Select at least 2 users");
+          toast({ title: "Select at least 2 users", variant: "destructive" });
+          setCreatingChat(false);
+          return;
         }
+        console.log("this is group chat")
 
         // 🔥 API call using axios utility
-        const { data } = await POST<{ success: boolean; data: any; message: string; }>("/api/v1/chat/newgroup", {
+        const { data } = await POST("/api/v1/chat/newgroup", {
           members: memberIds, name: trimmedName,
         });
 
         const chat = data.data;
+        console.log("chat:" + chat)
 
         if (!chat?._id) {
           throw new Error("Invalid server response");
@@ -705,6 +672,9 @@ const Chat = () => {
         setSelectedChatId(formatted.id);
 
         toast({ title: "Group Created", description: `Group ${trimmedName} created with ${contacts.length} members` });
+        setShowUsersModal(false);
+        setGroupName("");
+        setSelectedUsers([]);
       }
     } catch (error: any) {
       // 🔥 Axios-aware error handling
@@ -721,7 +691,6 @@ const Chat = () => {
       toast({ title: "Error", description: "Failed to create group", variant: "destructive" });
     } finally {
       setCreatingChat(false);
-      setShowUsersModal(false);
       setGroupName("");
       setSelectedUsers([]);
     }
@@ -733,15 +702,152 @@ const Chat = () => {
   // };
 
 
+  // ─── Current messages for selected chat ──────────────────────────────────
+  const currentMessages = useMemo(
+    () => (selectedChatId ? (messages[selectedChatId] ?? []) : []),
+    [messages, selectedChatId]
+  );
+
+  console.log(chats.map(c => c.id));
+
+  const handleAddMembers = async (chatId: string, newMembers: Member[]) => {
+    try {
+      await axios.post("/api/chat/add-members", { chatId, newMembers });
+      socket?.emit("refreshChats");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRemoveMember = async (chatId: string, memberId: string) => {
+    try {
+      await axios.post("/api/chat/remove-member", { chatId, memberId });
+      socket?.emit("refreshChats");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const updateChat = (chatId: string, updater: (c: Chat) => Chat) => {
+    setDraftChat(prev => (prev && prev.id === chatId ? updater(prev) : prev));
+  };
+
+
+  const handleLeaveGroup = async (chatId: string) => {
+    try {
+      await DELETE(`/api/v1/chat/leave/${chatId}`);
+
+      // ✅ Remove chat from sidebar
+      setChats((prev) => prev.filter((c) => c.id !== chatId));
+
+      // ✅ Remove messages
+      setMessages((prev) => {
+        const updated = { ...prev };
+        delete updated[chatId];
+        return updated;
+      });
+
+      // ✅ Reset selected chat if needed
+      setSelectedChatId((prev) =>
+        prev === chatId ? undefined : prev
+      );
+
+      // ✅ Notify others (optional, backend already emits usually)
+      socket?.emit("REFETCH_CHATS");
+
+      toast({
+        title: "Left Group",
+        description: "You left the group successfully",
+      });
+
+    } catch (err) {
+      console.error("Leave group error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to leave group",
+        variant: "destructive",
+      });
+    }
+  };
+
+
+  const handleRenameGroup = async (chatId: string, name: string) => {
+    try {
+      if (!name.trim()) {
+        return toast({
+          title: "Invalid name",
+          description: "Group name cannot be empty",
+          variant: "destructive",
+        });
+      }
+
+      await PUT(`/api/v1/chat/rename/${chatId}`, { name });
+
+      // ✅ Optimistic UI update
+      updateChat(chatId, (c) => ({ ...c, name }));
+      // or
+      //setChats((prev) => prev.map((c) => c.id === chatId ? { ...c, chatName: name } : c));
+
+      socket?.emit("REFETCH_CHATS");
+
+      toast({
+        title: "Success",
+        description: "Group renamed successfully",
+      });
+
+    } catch (err) {
+      console.error("Rename error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to rename group",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggleAdmin = async (chatId: string, memberId: string) => {
+    try {
+      await axios.post("/api/chat/toggle-admin", {
+        chatId,
+        memberId,
+      });
+
+      // optional optimistic update
+      updateChat(chatId, (c) => ({
+        ...c,
+        members: (c.members ?? []).map((m) =>
+          m.id === memberId ? { ...m, isAdmin: !m.isAdmin } : m
+        ),
+      }));
+
+      socket?.emit("REFETCH_CHATS");
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // const promoteDraftIfNeeded = (content: string) => {
+  //   if (draftChat && draftChat.id === selectedChatId) {
+  //     const promoted: Chat = {
+  //       ...draftChat,
+  //       lastMessage: content,
+  //       timestamp: 'now',
+  //     } as Chat;
+  //     setExtraChats(prev => [promoted, ...prev]);
+  //     setDraftChat(null);
+  //   }
+  // };
+
+
   // ✅ SEND MESSAGE (SOCKET ONLY)
   const handleSendMessage = useCallback(
-   async (payload: { text?: string; files?: File[] }) => {
-      if (!selectedChatId || !socketRef.current) return;
+    async (payload: { text?: string; files?: File[] }) => {
+      if (!selectedChatId || !socket) return;
 
       const text = payload.text?.trim();
       const files = payload.files;
 
-      // ❌ CASE: nothing
       if (!text && (!files || files.length === 0)) return;
 
       // Get members from selected chat or pending chat
@@ -772,7 +878,7 @@ const Chat = () => {
         const formData = new FormData();
 
         files.forEach((file) => {
-          formData.append("files", file);
+          formData.append("media", file);
         });
 
         const res = await fetch("/api/v1/upload/chat-media", {
@@ -798,7 +904,7 @@ const Chat = () => {
       const messagePayload = {
         text: text || "",
         media: uploadedMedia,
-        type, 
+        type,
         isMixedMedia,
         clientId,
       };
@@ -821,7 +927,7 @@ const Chat = () => {
       }));
 
       // Emit to server - send only OTHER members
-      socketRef.current.emit(EVENTS.NEW_MESSAGE, {
+      socket.emit(EVENTS.NEW_MESSAGE, {
         chatId: selectedChatId.startsWith("temp") ? null : selectedChatId,
         members: otherMembers,
         message: messagePayload,
@@ -831,14 +937,8 @@ const Chat = () => {
     [selectedChatId, selectedChat, pendingChat, currentUserId, user]
   );
 
-
-  // ─── Current messages for selected chat ──────────────────────────────────
-  const currentMessages = useMemo(
-    () => (selectedChatId ? (messages[selectedChatId] ?? []) : []),
-    [messages, selectedChatId]
-  );
-
-  console.log(chats.map(c => c.id));
+  console.log("ALL USERS:", allUsers);
+  console.log("FILTERED USERS:", filteredUsers);
 
   return <div className="h-[calc(100vh-4rem)] flex bg-background">
     <ChatSidebar
@@ -853,7 +953,11 @@ const Chat = () => {
       selectedChatId={selectedChatId}
       onSendMessage={handleSendMessage}
       handleNewChat={() => setNewChatOpen(true)}
-      socketRef={socketRef}
+      onAddMembers={handleAddMembers}
+      onRemoveMember={handleRemoveMember}
+      onLeaveGroup={handleLeaveGroup}
+      onRenameGroup={handleRenameGroup}
+      onToggleAdmin={handleToggleAdmin}
     />
     {/* New Chat Dialog */}
     <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
