@@ -29,7 +29,7 @@ interface Chat {
 interface ChatAreaProps {
   selectedChat: Chat | null;
   messages: Message[];
-  onSendMessage: (data: { text?: string; files?: File[] }) => void;
+  handleSendMessage: (data: { text?: string; files?: File[] }) => void;
   selectedChatId?: string;
   handleNewChat: () => void;
   onAddMembers?: (chatId: string, members: Member[]) => void;
@@ -42,7 +42,7 @@ interface ChatAreaProps {
 export function ChatArea({
   selectedChat,
   messages,
-  onSendMessage,
+  handleSendMessage,
   handleNewChat,
   selectedChatId,
   onAddMembers, onRemoveMember, onLeaveGroup, onRenameGroup, onToggleAdmin
@@ -87,7 +87,7 @@ export function ChatArea({
       <MessagesList messages={messages} />
 
       <ChatInput
-        onSendMessage={onSendMessage}
+        handleSendMessage={handleSendMessage}
         selectedChatId={selectedChatId}
         chatMembers={selectedChat?.members?.map((m: Member) => m._id) ?? []}
       />

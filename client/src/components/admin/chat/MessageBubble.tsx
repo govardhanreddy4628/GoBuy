@@ -2,7 +2,23 @@ import { format } from "date-fns";
 import { cn } from "../../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../ui/avatar";
 
-
+// features/chat/types/chat/message.ui.ts
+export interface Message {
+  id: string;
+  chatID?: string;
+  text?: string;
+  media?: { url: string; mimeType?: string; type?: string; size?: number }[];
+  type?: string;
+  location?: { address?: string };
+  contact?: { name?: string };
+  createdAt: Date;
+  isOwn: boolean;
+  senderName?: string;
+  senderAvatar?: string;
+  isRead?: boolean;
+  status?: "sent" | "delivered" | "read" | "failed";
+  clientId?: string;
+}
 
 interface MessageBubbleProps {
   message: Message;
@@ -61,7 +77,30 @@ export function MessageBubble({
             "transition-all duration-200"
           )}
         >
-          <p className="text-sm leading-relaxed">{message.text}</p>
+          {message.media && message.media.length > 0 && (
+            <div className="flex flex-col gap-1 mb-1">
+              {message.media.map((m, i) => {
+                if (m.type === "image") {
+                  return <img key={i} src={m.url} className="rounded-lg max-w-64 max-h-64 object-cover" />;
+                }
+                if (m.type === "video") {
+                  return <video key={i} src={m.url} controls className="rounded-lg max-w-64" />;
+                }
+                if (m.type === "audio") {
+                  return <audio key={i} src={m.url} controls className="max-w-64" />;
+                }
+                return (
+                  <a key={i} href={m.url} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-2 underline text-sm">
+                    📄 {m.url.split("/").pop()}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+          {message.text && (
+            <p className="text-sm leading-relaxed">{message.text}</p>
+          )}
         </div>
 
         {/* Timestamp and read status */}

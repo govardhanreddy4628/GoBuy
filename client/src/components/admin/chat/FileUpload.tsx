@@ -124,16 +124,14 @@ export function FileUpload({
     });
   };
 
-  const handleUpload = async () => {
-    setUploading(true);
-
-    const validFiles = files.filter((_, i) => !errors[i]);
-
-    if (validFiles.length === 0 && !inputText.trim()) return;
-
-    onFilesUploaded(validFiles, inputText.trim());
-    onClose();
-  };
+const handleUpload = async () => {
+  const validFiles = files.filter((_, i) => !errors[i]);
+  if (validFiles.length === 0 && !inputText.trim()) return;
+  setUploading(true);
+  onFilesUploaded(validFiles, inputText.trim());
+  setUploading(false);
+  onClose();
+};
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();

@@ -2,6 +2,24 @@ import { ScrollArea } from "../../../ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
 import { useEffect, useRef } from "react";
 
+// features/chat/types/chat/message.ui.ts
+export interface Message {
+  id: string;
+  chatID?: string;
+  text?: string;
+  media?: { url: string; mimeType?: string; type?: string; size?: number }[];
+  type?: string;
+  location?: { address?: string };
+  contact?: { name?: string };
+  createdAt: Date;
+  isOwn: boolean;
+  senderName?: string;
+  senderAvatar?: string;
+  isRead?: boolean;
+  status?: "sent" | "delivered" | "read" | "failed";
+  clientId?: string;
+}
+
 interface MessagesListProps {
   messages: Message[];
 }
@@ -15,6 +33,12 @@ export function MessagesList({ messages }: MessagesListProps) {
     }
   }, [messages]);
   
+  useEffect(() => {
+  const viewport = scrollRef.current?.querySelector<HTMLDivElement>(
+    "[data-radix-scroll-area-viewport]"
+  );
+  if (viewport) viewport.scrollTop = viewport.scrollHeight;
+}, [messages]);
 
   const shouldShowAvatar = (currentMessage: Message, nextMessage?: Message) => {
     if (!nextMessage) return true;

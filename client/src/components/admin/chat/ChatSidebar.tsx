@@ -15,7 +15,7 @@ import { Chat } from "./chat";
 interface ChatSidebarProps {
   chats: Chat[];
   selectedChatId?: string;
-  onChatSelect: (chatId: string) => void;
+  onChatSelect: (chatId: string) => void;message.text || "New message"
   handleNewChat?: () => void;
 }
 

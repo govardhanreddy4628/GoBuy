@@ -12,13 +12,13 @@ const EVENTS = {
   STOP_TYPING: "STOP_TYPING",
 };
 interface ChatInputProps {
-  onSendMessage: (data: { text?: string; files?: File[] }) => void;
+  handleSendMessage: (data: { text?: string; files?: File[] }) => void;
   selectedChatId?: string;
   disabled?: boolean;
   chatMembers?: any[]; // Optional: Pass chat members if needed
 }
 
-export function ChatInput({ onSendMessage, selectedChatId, disabled = false, chatMembers }: ChatInputProps) {
+export function ChatInput({ handleSendMessage, selectedChatId, disabled = false, chatMembers }: ChatInputProps) {
   const [inputText, setInputText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -89,22 +89,21 @@ export function ChatInput({ onSendMessage, selectedChatId, disabled = false, cha
     }, 1500);
   };
 
+  useEffect(() => () => { if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current); }, []);
+  
   // ✅ SEND HANDLER
   const handleSend = () => {
     if (!inputText.trim() && files.length === 0) return;
-
-    onSendMessage({
-      text: inputText.trim() || undefined,
-      files
-    });
-
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socket.emit(EVENTS.STOP_TYPING, { chatId: selectedChatId });
+    handleSendMessage({ text: inputText.trim() || undefined, files });
     setInputText("");
     setFiles([]);
     setShowEmoji(false);
   };
 
   const handleFilesUploaded = (files: File[], caption: string) => {
-    onSendMessage({ text: caption, files });
+    handleSendMessage({ text: caption, files });
     setShowFileUpload(false);
   };
 
@@ -256,7 +255,10 @@ export function ChatInput({ onSendMessage, selectedChatId, disabled = false, cha
       )}
 
       {/* File Upload Dialog */}
-      <Dialog open={showFileUpload} onOpenChange={setShowFileUpload}>
+      <Dialog open={showFileUpload} onOpenChange={(open) => {
+        setShowFileUpload(open);
+        if (!open) setFiles([]);
+      }}>
         <DialogContent className="z-50 bg-popover max-w-2xl min-h-[80vh]">
           <FileUpload
             onFilesUploaded={handleFilesUploaded}

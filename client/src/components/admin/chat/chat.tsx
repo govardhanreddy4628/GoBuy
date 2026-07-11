@@ -24,6 +24,7 @@ const EVENTS = {
   CHAT_JOINED: "CHAT_JOINED",
   CHAT_LEAVED: "CHAT_LEAVED",
   ONLINE_USERS: "ONLINE_USERS",
+  MESSAGE_MEDIA_UPLOADED: "MESSAGE_MEDIA_UPLOADED"
 };
 interface Message {
   id: string;
@@ -333,7 +334,7 @@ const Chat = () => {
       });
 
       // Clear pendingChat once we have a real id
-      setPendingChat(null);
+setPendingChat((prev) => (prev && selectedChatId === prev.id ? null : prev));
 
       // Update chats sidebar
       // 🔥 FIXED CHAT SIDEBAR LOGIC
@@ -361,7 +362,7 @@ const Chat = () => {
                 id: realChatId,
                 chatName,
                 chatAvatar,
-                lastMessage: message.text || "New message",
+                lastMessage: getLastMessagePreview(formatted),
                 updatedAt: message.createdAt,
               }
               : c
@@ -374,6 +375,7 @@ const Chat = () => {
         if (!exists) {
           let chatName = "Unknown";
           let chatAvatar = "";
+          console.log(chatName)
 
           if (incomingChat?.isGroup) {
             chatName = incomingChat.chatName || "Group";
@@ -716,13 +718,14 @@ const Chat = () => {
       socket?.emit("refreshChats");
     } catch (err) {
       console.error(err);
+      toast({ title: "Error", description: "Failed to add members", variant: "destructive" });
     }
   };
 
   const handleRemoveMember = async (chatId: string, memberId: string) => {
     try {
       await axios.post("/api/chat/remove-member", { chatId, memberId });
-      socket?.emit("refreshChats");
+      socket?.emit("REFETCH_CHATS");
     } catch (err) {
       console.error(err);
     }
@@ -819,6 +822,7 @@ const Chat = () => {
           m.id === memberId ? { ...m, isAdmin: !m.isAdmin } : m
         ),
       }));
+      
 
       socket?.emit("REFETCH_CHATS");
 
@@ -840,102 +844,148 @@ const Chat = () => {
   // };
 
 
+const uploadChatMedia = async (files: File[]) => {
+  const formData = new FormData();
+
+  files.forEach((file) => {
+    formData.append("media", file);
+  });
+
+  const res = await POST("/api/v1/upload/chat-media", formData, {
+    headers: {"Content-Type": "multipart/form-data"},
+  });
+
+  return res.data;
+};
+
   // ✅ SEND MESSAGE (SOCKET ONLY)
   const handleSendMessage = useCallback(
-    async (payload: { text?: string; files?: File[] }) => {
-      if (!selectedChatId || !socket) return;
+  async (payload: { text?: string; files?: File[] }) => {
+    if (!selectedChatId || !socket) return;
 
-      const text = payload.text?.trim();
-      const files = payload.files;
+    const text = payload.text?.trim() || "";
+    const files = payload.files || [];
 
-      if (!text && (!files || files.length === 0)) return;
+    if (!text && files.length === 0) return;
 
-      // Get members from selected chat or pending chat
-      let members: string[] = [];
-
-      if (selectedChat?.members) {
-        members = selectedChat.members;
-      } else if (pendingChat?.members) {
-        members = pendingChat.members;
-      }
-
-      // Ensure we have the other member(s) to send to
-      const otherMembers = members.filter((id: string) => id !== currentUserId);
-
-      if (otherMembers.length === 0) {
+  //     // Get members from selected chat or pending chat
+  //     // let members: string[] = [];
+  //     // if (selectedChat?.members) {
+  //     //   members = selectedChat.members;
+  //     // } else if (pendingChat?.members) {
+  //     //   members = pendingChat.members;
+  //     // }
+  //     //or
+    const members = selectedChat?.members || pendingChat?.members || [];
+    const otherMembers = members.filter((id: string) => id !== currentUserId);
+        if (otherMembers.length === 0) {
         console.error("No recipients for message");
         return;
       }
 
-      // Optimistic message
-      const tempMsgId = `temp-msg-${Date.now()}`;
-      const clientId = `client-${Date.now()}`;
+    const tempMsgId = `temp-msg-${Date.now()}`;
+    const clientId = `client-${Date.now()}`;
 
-      let uploadedMedia: any[] = [];
+    // ✅ Create LOCAL preview for media
+    const localMedia =
+      files.length > 0
+        ? files.map((file) => ({
+            localUrl: URL.createObjectURL(file),
+            type: file.type.startsWith("image")
+              ? "image"
+              : file.type.startsWith("video")
+              ? "video"
+              : file.type.startsWith("audio")
+              ? "audio"
+              : "file",
+          }))
+        : [];
 
-      // ✅ UPLOAD FIRST (IMPORTANT)
-      if (files && files.length > 0) {
-        const formData = new FormData();
+    // ✅ Detect type
+    let type = "text";
+    let isMixedMedia = false;
 
-        files.forEach((file) => {
-          formData.append("media", file);
-        });
+    if (localMedia.length > 0) {
+      const types = localMedia.map((m) => m.type);
+      const allSame = types.every((t) => t === types[0]);
+      type = allSame ? types[0] : "mixed";
+      isMixedMedia = !allSame;
+    }
 
-        const res = await fetch("/api/v1/upload/chat-media", {
-          method: "POST",
-          body: formData,
-        });
+    // ✅ OPTIMISTIC MESSAGE (instant UI)
+    const optimistic: Message = {
+      id: tempMsgId,
+      text,
+      media: localMedia, // 👈 show instantly
+      type,
+      createdAt: new Date(),
+      isOwn: true,
+      senderName: user?.fullName ?? "You",
+      status: "sent",
+      clientId,
+    };
 
-        uploadedMedia = await res.json();
-      }
+    setMessages((prev) => ({
+      ...prev,
+      [selectedChatId]: [...(prev[selectedChatId] ?? []), optimistic],
+    }));
 
-      // ✅ DETECT TYPE
-      let type = "text";
-      let isMixedMedia = false;
-
-      if (uploadedMedia.length > 0) {
-        const types = uploadedMedia.map((m: any) => m.type);
-        const allSame = types.every((t) => t === types[0]);
-
-        type = types[0];
-        if (!allSame) isMixedMedia = true;
-      }
-
-      const messagePayload = {
-        text: text || "",
-        media: uploadedMedia,
+    // ✅ SEND MESSAGE IMMEDIATELY (no waiting)
+    socket.emit(EVENTS.NEW_MESSAGE, {
+      chatId: selectedChatId.startsWith("temp") ? null : selectedChatId,
+      members: otherMembers,
+      message: {
+        text,
+        media: localMedia, // temporary
         type,
         isMixedMedia,
         clientId,
-      };
+      },
+      groupName: selectedChat?.isGroup ? selectedChat.chatName : undefined,
+    });
 
-      const optimistic: Message = {
-        id: tempMsgId,
-        text,
-        media: uploadedMedia,
-        type: messagePayload.type,
-        createdAt: new Date(),
-        isOwn: true,
-        senderName: user?.fullName ?? "You",
-        status: "sent",
-        clientId,
-      };
+    // ✅ BACKGROUND UPLOAD (if media exists)
+    if (files.length > 0) {
+      try {
+        const uploadedMedia = await uploadChatMedia(files);
 
-      setMessages((prev) => ({
-        ...prev,
-        [selectedChatId]: [...(prev[selectedChatId] ?? []), optimistic],
-      }));
+        // 🔄 Update message with real URLs
+        setMessages((prev) => ({
+          ...prev,
+          [selectedChatId]: (prev[selectedChatId] || []).map((msg) =>
+            msg.id === tempMsgId
+              ? {
+                  ...msg,
+                  media: uploadedMedia,
+                  status: "sent",
+                }
+              : msg
+          ),
+        }));
 
-      // Emit to server - send only OTHER members
-      socket.emit(EVENTS.NEW_MESSAGE, {
-        chatId: selectedChatId.startsWith("temp") ? null : selectedChatId,
-        members: otherMembers,
-        message: messagePayload,
-        groupName: selectedChat?.isGroup ? selectedChat.chatName : undefined,
-      });
-    },
-    [selectedChatId, selectedChat, pendingChat, currentUserId, user]
-  );
+        // 🔄 Optional: notify server media uploaded
+        socket.emit(EVENTS.MESSAGE_MEDIA_UPLOADED, {
+          clientId,
+          media: uploadedMedia,
+        });
+
+      } catch (error) {
+        console.error(error);
+
+        // ❌ mark failed
+        setMessages((prev) => ({
+          ...prev,
+          [selectedChatId]: (prev[selectedChatId] || []).map((msg) =>
+            msg.id === tempMsgId
+              ? { ...msg, status: "failed" }
+              : msg
+          ),
+        }));
+      }
+    }
+  },
+  [selectedChatId, selectedChat, pendingChat, currentUserId, user]
+);
 
   console.log("ALL USERS:", allUsers);
   console.log("FILTERED USERS:", filteredUsers);
@@ -951,7 +1001,7 @@ const Chat = () => {
       selectedChat={selectedChat}
       messages={currentMessages}
       selectedChatId={selectedChatId}
-      onSendMessage={handleSendMessage}
+      handleSendMessage={handleSendMessage}
       handleNewChat={() => setNewChatOpen(true)}
       onAddMembers={handleAddMembers}
       onRemoveMember={handleRemoveMember}
