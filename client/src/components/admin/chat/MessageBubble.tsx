@@ -1,8 +1,6 @@
-import { format } from "date-fns";
 import { cn } from "../../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../ui/avatar";
 
-// features/chat/types/chat/message.ui.ts
 export interface Message {
   id: string;
   chatID?: string;

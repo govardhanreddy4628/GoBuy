@@ -140,6 +140,10 @@ app.use(
 // ---------------- INNGEST ----------------
 app.use("/api/inngest", inngestHandler);
 
+// ---------------- Health Route ------------
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
 
 // ---------------------- API ROUTES ----------------------
 app.use("/api/v1/user", userRoutes);

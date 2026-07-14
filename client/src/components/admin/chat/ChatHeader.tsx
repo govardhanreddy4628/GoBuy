@@ -15,15 +15,20 @@ interface ChatHeaderProps {
   memberCount?: number;
   chatAvatar?: string;
   members?: Member[];
+  currentUserId?: string;
+  onlineUserIds?: string[];
   onAddMembers?: (members: Member[]) => void;
   onRemoveMember?: (memberId: string) => void;
   onLeaveGroup?: () => void;
   onRenameGroup?: (name: string) => void;
   onToggleAdmin?: (memberId: string) => void;
+  handleUpdateGroupIcon: () => void;
+  handleRemoveGroupIcon: () => void;
 }
 
 export function ChatHeader({ chatId, chatName, isOnline, isGroup, memberCount, chatAvatar, members = [],
-  onAddMembers, onRemoveMember, onLeaveGroup, onRenameGroup, onToggleAdmin, }: ChatHeaderProps) {
+  onAddMembers, onRemoveMember, onLeaveGroup, onRenameGroup, onToggleAdmin, currentUserId, onlineUserIds, 
+handleUpdateGroupIcon, handleRemoveGroupIcon}: ChatHeaderProps) {
   const [groupOpen, setGroupOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [callMode, setCallMode] = useState<"audio" | "video">("audio");
@@ -160,11 +165,16 @@ export function ChatHeader({ chatId, chatName, isOnline, isGroup, memberCount, c
           onOpenChange={setGroupOpen}
           groupName={chatName}
           members={members}
+          currentUserId={currentUserId}
+          onlineUserIds={onlineUserIds}
           onAddMembers={(m) => onAddMembers?.(m)}
           onRemoveMember={(id) => onRemoveMember?.(id)}
           onLeaveGroup={() => onLeaveGroup?.()}
           onRenameGroup={(n) => onRenameGroup?.(n)}
           onToggleAdmin={(id) => onToggleAdmin?.(id)}
+          groupAvatar={chatAvatar}
+          onUpdateGroupIcon={handleUpdateGroupIcon}
+          onRemoveGroupIcon={handleRemoveGroupIcon}
         />
       )}
 
@@ -175,7 +185,7 @@ export function ChatHeader({ chatId, chatName, isOnline, isGroup, memberCount, c
         chatName={chatName}
         avatar={chatAvatar}
         isGroup={isGroup}
-        roomId={chatId} 
+        roomId={chatId}
       />
 
     </div>

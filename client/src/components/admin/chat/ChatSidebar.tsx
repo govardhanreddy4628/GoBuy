@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../ui/dialog";
 import { toast } from "../../../hooks/use-toast";
-import { Search, Plus, Settings, Users, MessageCircle } from "lucide-react";
+import { Search, Plus, Settings, MessageCircle } from "lucide-react";
 import { Button } from "../../../ui/button";
 import { Label } from "../../../ui/label";
 import { Switch } from "../../../ui/switch";
 import { Input } from "../../../ui/input";
 import { Separator } from "../../../ui/separator";
 import { ScrollArea } from "../../../ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "../../../ui/avatar";
-import { Badge } from "../../../ui/badge";
 import { IoFilterSharp } from "react-icons/io5";
 import { Chat } from "./chat";
+import { ChatListItem } from "./ChatListItem";
+
 interface ChatSidebarProps {
   chats: Chat[];
   selectedChatId?: string;
-  onChatSelect: (chatId: string) => void;message.text || "New message"
+  onChatSelect: (chatId: string) => void;
   handleNewChat?: () => void;
 }
 
@@ -28,7 +28,7 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
   const [filter, setFilter] = useState<"all" | "group" | "individual">("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  
+
 
   const FILTER_OPTIONS = [
     { label: "All", value: "all" },
@@ -52,11 +52,15 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
       });
   }, [chats, searchQuery, filter]);
 
-  const sortedChats = [...filteredChats].sort(
-  (a, b) =>
-    new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() -
-    new Date(a.updatedAt ?? a.createdAt ?? 0).getTime()
-);
+  const sortedChats = useMemo(
+    () =>
+      [...filteredChats].sort(
+        (a, b) =>
+          new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() -
+          new Date(a.updatedAt ?? a.createdAt ?? 0).getTime()
+      ),
+    [filteredChats]
+  );
 
   const handleSelect = useCallback((id: string) => {
     onChatSelect(id);
@@ -65,17 +69,12 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (!dropdownRef.current) return;
-
       if (!dropdownRef.current.contains(e.target as Node)) {
         setFilterOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
 
@@ -215,53 +214,12 @@ export function ChatSidebar({ selectedChatId, onChatSelect, handleNewChat, chats
             </div>
           ) : (
             sortedChats.map((chat) => (
-              <div                      //later make this code as new component like ChatListItem(with React.memo so that useCallback fits oerfectly. else useCallback above is redundant) and pass chat, handleSelect as props to it. and also move handleSelect to that component and make it as onClick for that component. and also move selectedChatId to that component and make condition for active state of that component.
+               <ChatListItem
                 key={chat.id}
-                onClick={() => handleSelect(chat.id)}
-                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-accent/50 ${selectedChatId === chat.id ? 'bg-accent' : ''
-                  }`}
-              >
-                <div className="relative">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={chat.chatAvatar} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {chat.isGroup ? (
-                        <Users className="h-6 w-6" />
-                      ) : (
-                        chat.chatName ? chat.chatName.split(' ').map(n => n[0]).join('') : 'N/A'
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
-                  {!chat.isGroup && (
-                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-chat-sidebar ${chat.isOnline ? "bg-green-600" : "bg-gray-400"
-                      }`} />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0 max-w-48">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-foreground truncate">
-                      {chat.chatName}
-                    </h3>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(chat.updatedAt!).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                  {/* for truncate to make work it's nearest parent should contrain its child width thats why i given max-w-48 for its parent. */}
-                  <p className="text-sm text-muted-foreground truncate">
-                    {chat.lastMessage}
-                  </p>
-                </div>
-
-                {chat.unreadCount > 0 && (
-                  <Badge variant="default" className="bg-primary text-primary-foreground">
-                    {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
-                  </Badge>
-                )}
-              </div>
+                chat={chat}
+                isSelected={selectedChatId === chat.id}
+                onSelect={handleSelect}
+              />
             )))}
         </div>
       </ScrollArea>

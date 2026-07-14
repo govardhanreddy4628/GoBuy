@@ -36,6 +36,9 @@ export function initAdminChat(io: Namespace) {
     console.log(`🟢 User connected: ${user.fullName} (${socket.id})`);
     userSocketIDs.set(user._id.toString(), socket.id);
 
+    onlineUsers.add(user._id.toString());
+    io.emit(ONLINE_USERS, Array.from(onlineUsers));
+
     // socket.on("sendMessage", async (msg) => {
     //   const saved = await new Message(msg).save();
     //   io.to(msg.receiverId).emit("receiveMessage", saved);
@@ -242,21 +245,13 @@ export function initAdminChat(io: Namespace) {
       socket.to(membersSockets).emit(STOP_TYPING, { chatId });
     });
 
-    socket.on(CHAT_JOINED, ({ userId, members, chatId }) => {
-      socket.join(chatId);
-      onlineUsers.add(userId.toString());
-      const membersSockets = getSockets(members).filter(
-        (id): id is string => typeof id === "string",
-      );
-      io.to(membersSockets).emit(ONLINE_USERS, Array.from(onlineUsers));
+    // ✅ CHAT_JOINED/CHAT_LEAVED now only manage socket.io rooms — NOT presence
+    socket.on(CHAT_JOINED, ({ chatId }) => {
+      if (chatId) socket.join(chatId);
     });
 
-    socket.on(CHAT_LEAVED, ({ userId, members }) => {
-      onlineUsers.delete(userId.toString());
-      const membersSockets = getSockets(members).filter(
-        (id): id is string => typeof id === "string",
-      );
-      io.to(membersSockets).emit(ONLINE_USERS, Array.from(onlineUsers));
+    socket.on(CHAT_LEAVED, ({ chatId }) => {
+      if (chatId) socket.leave(chatId);
     });
 
     socket.on("MARK_SEEN", async ({ chatId, userId }) => {
@@ -290,10 +285,10 @@ export function initAdminChat(io: Namespace) {
     });
 
     socket.on("disconnect", () => {
-      console.log("❌ Admin disconnected:", socket.id);
+      console.log("❌ User disconnected:", socket.id);
       userSocketIDs.delete(user.id.toString());
       onlineUsers.delete(user.id.toString());
-      socket.broadcast.emit(ONLINE_USERS, Array.from(onlineUsers));
+      io.emit(ONLINE_USERS, Array.from(onlineUsers));
       // or
       // socket.broadcast.emit(ONLINE_USERS, [...onlineUsers]);
     });

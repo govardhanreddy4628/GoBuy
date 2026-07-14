@@ -33,7 +33,7 @@ export function FileUpload({
   files,
   setFiles,
   maxFiles = 5,
-  maxFileSize = 25
+  maxFileSize = 5
 }: FileUploadProps) {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);

@@ -49,8 +49,24 @@ const multerUpload = multer({
   },
 });
 
+
+export const handleMulterError = (uploadMiddleware: any) => {
+  return (req: any, res: any, next: any) => {
+    uploadMiddleware(req, res, (err: any) => {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ message: err.message });
+      }
+      if (err) {
+        return res.status(400).json({ message: err.message || "Upload error" });
+      }
+      next();
+    });
+  };
+};
+
 const uploadSingle = multerUpload.single("image");
 const uploadMultiple = multerUpload.array("images", MAX_FILES);
 const uploadMultipleMedia = multerUpload.array("media", MAX_FILES);
+const uploadSingleMedia = multerUpload.single("media"); // ✅ new — for one-file-per-message chat uploads
 
-export { uploadSingle, uploadMultiple, uploadMultipleMedia };
+export { uploadSingle, uploadMultiple, uploadMultipleMedia, uploadSingleMedia };

@@ -14,7 +14,7 @@ export interface ChatFromApi {
   isGroup: boolean;
   groupAdmins: {_id: string}[];
   groupCreator: {_id: string};
-  members?: { _id: string; fullName: string; avatar?: string }[];
+  members?: { _id: string; fullName: string; avatar?: string; isAdmin?: boolean }[];
   //groupName: string;
   groupIcon?: { url: string; public_id: string };
   lastMessage?: { _id: string; text: string; media: media; type: string; sender: string; createdAt: string };

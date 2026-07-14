@@ -1,9 +1,14 @@
 import express from "express";
-import { accessChat, allMessages, allMessagesOfChat, createGroupChat, fetchChats, allUsers, renameGroup, addMembersToGroup, removeMemberFromGroup} from "../controllers/chatController.js";
+import { accessChat, allMessagesOfChat, createGroupChat, fetchChats, 
+  allUsers, renameGroup, addMembersToGroup, removeMemberFromGroup, uploadSingleChatMediaController,
+  removeGroupIcon,
+  updateGroupIcon} from "../controllers/chatController.js";
 import { authenticate } from "../middleware/authenticate.js";
-import { uploadMultipleMedia } from "../middleware/multer.js";
+import { handleMulterError, uploadMultipleMedia, uploadSingle, uploadSingleMedia } from "../middleware/multer.js";
 import { acceptRequestValidator, sendAttachmentsValidator, sendRequestValidator, validateHandler } from "../lib/chatValidators.js";
+import { setUploadFolder } from "../middleware/setFolderName.js";
 //import upload from "../middleware/multer";
+
 
 const chatRouter = express.Router();
 
@@ -31,6 +36,25 @@ chatRouter.get("/users", authenticate(), allUsers);
 chatRouter.get("/messages/:chatId", authenticate(), allMessagesOfChat);
 
 
+chatRouter.post(
+  "/upload/chat-media/single",
+  authenticate(),
+  setUploadFolder("chat"),
+  handleMulterError(uploadSingleMedia),
+  uploadSingleChatMediaController,
+);
+
+
+
+chatRouter.put(
+  "/icon/:chatId",
+  authenticate(), 
+  setUploadFolder("group-icons"),
+  handleMulterError(uploadSingle),
+  updateGroupIcon
+);
+
+chatRouter.delete("/icon/:chatId", authenticate(), removeGroupIcon);
 
 // chatRouter.put(
 //   "/sendrequest",

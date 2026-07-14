@@ -77,7 +77,6 @@ export const deleteFilesFromCloudinary = async (publicIds: string[]) => {
 };
 
 
-
 export async function uploadChatMedia(
   file: Express.Multer.File,
   folder = "chat"

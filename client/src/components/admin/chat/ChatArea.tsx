@@ -37,6 +37,10 @@ interface ChatAreaProps {
   onLeaveGroup?: (chatId: string) => void;
   onRenameGroup?: (chatId: string, name: string) => void;
   onToggleAdmin?: (chatId: string, memberId: string) => void;
+  currentUserId?: string;
+  onlineUserIds?: string[];
+  handleUpdateGroupIcon: () => void;
+  handleRemoveGroupIcon: () => void;
 }
 
 export function ChatArea({
@@ -45,7 +49,10 @@ export function ChatArea({
   handleSendMessage,
   handleNewChat,
   selectedChatId,
-  onAddMembers, onRemoveMember, onLeaveGroup, onRenameGroup, onToggleAdmin
+  onAddMembers, onRemoveMember, onLeaveGroup, onRenameGroup, onToggleAdmin,
+  currentUserId, onlineUserIds = [],
+  handleUpdateGroupIcon,
+  handleRemoveGroupIcon
 }: ChatAreaProps) {
 
   if (!selectedChat) {
@@ -67,12 +74,17 @@ export function ChatArea({
     );
   }
 
+  const isDirectPartnerOnline =
+    !selectedChat.isGroup && selectedChat.members?.some(
+      (m) => m._id !== currentUserId && onlineUserIds.includes(m._id)
+    );
+
   return (
     <div className="flex-1 flex flex-col bg-background">
       <ChatHeader
         chatId={selectedChat.id}
         chatName={selectedChat.chatName}
-        //isOnline={selectedChat.isOnline}
+        isOnline={isDirectPartnerOnline}
         isGroup={selectedChat.isGroup}
         memberCount={selectedChat.memberCount}
         chatAvatar={selectedChat.chatAvatar}
@@ -82,6 +94,10 @@ export function ChatArea({
         onLeaveGroup={() => onLeaveGroup?.(selectedChat.id)}
         onRenameGroup={(n) => onRenameGroup?.(selectedChat.id, n)}
         onToggleAdmin={(id) => onToggleAdmin?.(selectedChat.id, id)}
+        currentUserId={currentUserId}
+        onlineUserIds={onlineUserIds}
+        handleUpdateGroupIcon={handleUpdateGroupIcon}
+        handleRemoveGroupIcon={handleRemoveGroupIcon}
       />
 
       <MessagesList messages={messages} />

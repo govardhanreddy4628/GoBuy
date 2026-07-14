@@ -17,56 +17,31 @@ import {
   uploadMultipleChatMedia,
   uploadMultipleToCloudinary,
 } from "../services/cloudinaryService.js";
+import { uploadChatMedia } from "../services/cloudinaryService.js"; // add this import alongside the existing uploadMultipleChatMedia / uploadMultipleToCloudinary import
+import {
+  uploadToCloudinary,
+  destroyCloudinaryById,
+} from "../services/cloudinaryService.js"; 
 
 // export interface AuthRequest extends Request {
 //   user?: IUserDocument;
 // }         //not needed this as we have already defined it globally in express.d.ts file
 
-const emitEvent = (
-  req: Request,
-  event: string,
-  users: string[],
-  data?: any,
-): void => {
-  const io = (req.app as any).get("io");
-  if (!users || !Array.isArray(users)) return;
-  const usersSocket = getSockets(users);
-  if (!usersSocket.length) return;
-  io.to(usersSocket).emit(event, data);
-};
-
-export const fetchAllChats: RequestHandler = async (req: any, res) => {
-  try {
-    if (!req.user) {
-      res.status(401).json({ message: "Unauthorized" });
-      return;
-    }
-
-    const chats = await ChatModel.find({
-      members: req.user._id,
-    })
-      .populate("members", "fullName avatar")
-      .populate("groupAdmins", "fullName avatar")
-      .populate({
-        path: "lastMessage",
-        populate: {
-          path: "sender",
-          select: "fullName avatar",
-        },
-      })
-      .sort({ updatedAt: -1 });
-
-    res.status(200).json(chats);
-  } catch (error: any) {
-    console.error("fetchAllChats error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
+// const emitEvent = (
+//   req: Request,
+//   event: string,
+//   users: string[],
+//   data?: any,
+// ): void => {
+//   const io = (req.app as any).get("io");
+//   if (!users || !Array.isArray(users)) return;
+//   const usersSocket = getSockets(users);
+//   if (!usersSocket.length) return;
+//   io.to(usersSocket).emit(event, data);
+// };
 
 // ---------------- Access / Create One-to-One Chat ----------------
 //@description     Create or fetch One to One Chat
-//@route           POST /api/chat/
-//@access          Protected
 const accessChat: RequestHandler = async (req, res) => {
   const { userId } = req.body;
 
@@ -123,7 +98,7 @@ const fetchChats: RequestHandler = async (req: any, res) => {
     const chats = await ChatModel.find({
       members: req.user._id,
     })
-      .populate("members", "fullName avatar")
+      .populate("members", "fullName avatar email")
       .populate("groupAdmins", "fullName avatar")
       .populate("groupCreator", "fullName avatar")
       .populate({
@@ -192,6 +167,10 @@ const fetchChats: RequestHandler = async (req: any, res) => {
           _id: m._id.toString(),
           fullName: m.fullName,
           avatar: m.avatar,
+          isAdmin:
+            chat.groupAdmins?.some(
+              (a: any) => a._id.toString() === m._id.toString(),
+            ) ?? false,
         })),
 
         lastMessage: chat.lastMessage
@@ -324,9 +303,140 @@ const createGroupChat = async (req: any, res: Response) => {
   }
 };
 
-export const uploadChatMediaController = async (req, res) => {
+
+
+const updateGroupIcon: RequestHandler = async (req: any, res) => {
   try {
-    const files = req.files;
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const { chatId } = req.params;
+    const chat = await ChatModel.findById(chatId);
+
+    if (!chat) {
+      res.status(404).json({ message: "Chat not found" });
+      return;
+    }
+    if (!chat.isGroup) {
+      res.status(400).json({ message: "Only group chats have a group icon" });
+      return;
+    }
+
+    const isAdmin = chat.groupAdmins.some(
+      (a: any) => a.toString() === req.user._id.toString(),
+    );
+    if (!isAdmin) {
+      res
+        .status(403)
+        .json({ message: "Only group admins can change the group photo" });
+      return;
+    }
+
+    // uploadSingle → multer.single("image"), so req.file is populated by the time we get here
+    if (!req.file) {
+      res.status(400).json({ message: "No file uploaded" });
+      return;
+    }
+
+    // clean up the old Cloudinary asset so it doesn't pile up
+    if (chat.groupIcon?.public_id) {
+      await destroyCloudinaryById(chat.groupIcon.public_id);
+    }
+
+    const uploaded = await uploadToCloudinary(
+      req.file.path,
+      "chat/group-icons",
+    );
+
+    chat.groupIcon = {
+      url: uploaded.secure_url,
+      public_id: uploaded.public_id,
+    };
+    await chat.save();
+
+    // notify all members' open sockets so sidebar/header update live for everyone
+    const memberIds = chat.members.map((m: any) => m.toString());
+    const memberSockets = getSockets(memberIds);
+    const io = req.app.get("io"); // ⚠️ ASSUMPTION — see note below
+
+    io?.to(memberSockets).emit("GROUP_ICON_UPDATED", {
+      chatId: chat._id.toString(),
+      groupIcon: chat.groupIcon,
+    });
+
+    res
+      .status(200)
+      .json({
+        message: "Group icon updated",
+        data: { groupIcon: chat.groupIcon },
+      });
+  } catch (error: any) {
+    console.error("updateGroupIcon error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const removeGroupIcon: RequestHandler = async (req: any, res) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const { chatId } = req.params;
+    const chat = await ChatModel.findById(chatId);
+
+    if (!chat) {
+      res.status(404).json({ message: "Chat not found" });
+      return;
+    }
+    if (!chat.isGroup) {
+      res.status(400).json({ message: "Only group chats have a group icon" });
+      return;
+    }
+
+    const isAdmin = chat.groupAdmins.some(
+      (a: any) => a.toString() === req.user._id.toString(),
+    );
+    if (!isAdmin) {
+      res
+        .status(403)
+        .json({ message: "Only group admins can remove the group photo" });
+      return;
+    }
+
+    if (chat.groupIcon?.public_id) {
+      await destroyCloudinaryById(chat.groupIcon.public_id);
+    }
+
+    chat.groupIcon = { url: undefined, public_id: undefined };
+    await chat.save();
+
+    const memberIds = chat.members.map((m: any) => m.toString());
+    const memberSockets = getSockets(memberIds);
+    const io = req.app.get("io");
+
+    io?.to(memberSockets).emit("GROUP_ICON_UPDATED", {
+      chatId: chat._id.toString(),
+      groupIcon: null,
+    });
+
+    res.status(200).json({ message: "Group icon removed" });
+  } catch (error: any) {
+    console.error("removeGroupIcon error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+interface MulterRequest extends Request {
+  files: Express.Multer.File[];
+}
+export const uploadChatMediaController = async (req:MulterRequest, res:Response) => {
+  try {
+    const files = req.files as Express.Multer.File[];
 
     if (!files || files.length === 0) {
       return res.status(400).json({ message: "No files" });
@@ -338,6 +448,35 @@ export const uploadChatMediaController = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Upload failed" });
+  }
+};
+
+export const uploadSingleChatMediaController: RequestHandler = async (
+  req: any,
+  res,
+) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const file = req.file; // set by multer's .single(), not .array()
+
+    if (!file) {
+      res.status(400).json({ message: "No file provided" });
+      return;
+    }
+
+    const media = await uploadChatMedia(file);
+
+    // ✅ Return as an array so the frontend's uploadSingleChatMedia/uploadedMedia
+    // handling (which expects the same shape as the multi-file endpoint) works
+    // without any branching on the client.
+    res.status(200).json([media]);
+  } catch (err: any) {
+    console.error("Single chat media upload error:", err);
+    res.status(500).json({ message: err.message || "Upload failed" });
   }
 };
 
@@ -532,7 +671,7 @@ const renameGroup: RequestHandler = asyncHandler(async (req, res, next) => {
   chat.chatName = name.trim();
   await chat.save();
 
-  emitEvent(req, REFETCH_CHATS, chat.members);
+  //emitEvent(req, REFETCH_CHATS, chat.members);
 
   res.json({ success: true });
 });
@@ -562,12 +701,12 @@ const addMembersToGroup: RequestHandler = TryCatch(async (req, res, next) => {
   chat.members.push(...newMembers.map((u) => u._id));
   await chat.save();
 
-  emitEvent(req, ALERT, chat.members, {
-    message: `${newMembers.map((u) => u.fullName).join(", ")} added`,
-    chatId,
-  });
+  // emitEvent(req, ALERT, chat.members, {
+  //   message: `${newMembers.map((u) => u.fullName).join(", ")} added`,
+  //   chatId,
+  // });
 
-  emitEvent(req, REFETCH_CHATS, chat.members);
+  // emitEvent(req, REFETCH_CHATS, chat.members);
 
   res.json({ success: true });
 });
@@ -604,12 +743,12 @@ const removeMemberFromGroup: RequestHandler = TryCatch(
 
     await chat.save();
 
-    emitEvent(req, ALERT, chat.members, {
-      message: "Member removed",
-      chatId,
-    });
+    // emitEvent(req, ALERT, chat.members, {
+    //   message: "Member removed",
+    //   chatId,
+    // });
 
-    emitEvent(req, REFETCH_CHATS, chat.members);
+    // emitEvent(req, REFETCH_CHATS, chat.members);
 
     res.json({ success: true });
   },
@@ -621,19 +760,29 @@ const leaveGroup: RequestHandler = TryCatch(async (req, res, next) => {
 
   const chat = await ChatModel.findById(chatId);
 
-  if (!chat) return next(new ApiError(404, "Chat not found"));
-  if (!chat.isGroup) return next(new ApiError(400, "Not a group"));
+  if (!chat) {
+    next(new ApiError(404, "Chat not found"));
+    return;
+  }
+
+  if (!chat.isGroup) {
+    next(new ApiError(400, "Not a group"));
+    return;
+  }
 
   // ❗ Check if user is actually in group
   if (!chat.members.some((m) => m.toString() === userId)) {
-    return next(new ApiError(400, "You are not a member of this group"));
+    next(new ApiError(400, "You are not a member of this group"));
+    return;
   }
 
   // Remove user from members
   const remainingMembers = chat.members.filter((m) => m.toString() !== userId);
 
-  if (remainingMembers.length < 3)
-    return next(new ApiError(400, "Group must have at least 3 members"));
+  if (remainingMembers.length < 3) {
+    next(new ApiError(400, "Group must have at least 3 members"));
+  return;
+  }
 
   const wasAdmin = chat.groupAdmins.some((a) => a.toString() === userId);
 
@@ -649,19 +798,20 @@ const leaveGroup: RequestHandler = TryCatch(async (req, res, next) => {
   // ❗ If no members left → delete group
   if (remainingMembers.length === 0) {
     await chat.deleteOne();
-    return res.json({ success: true, message: "Group deleted" });
+    res.json({ success: true, message: "Group deleted" });
+    return;
   }
 
   const user = await UserModel.findById(userId, "fullName");
 
   await chat.save();
 
-  emitEvent(req, ALERT, chat.members, {
-    chatId,
-    message: `${user?.fullName} left the group`,
-  });
+  // emitEvent(req, ALERT, chat.members, {
+  //   chatId,
+  //   message: `${user?.fullName} left the group`,
+  // });
 
-  emitEvent(req, REFETCH_CHATS, chat.members);
+  // emitEvent(req, REFETCH_CHATS, chat.members);
 
   res.json({ success: true });
 });
@@ -676,17 +826,17 @@ const toggleGroupAdmin: RequestHandler = TryCatch(async (req, res, next) => {
   if (!chat.isGroup) return next(new ApiError(400, "Not a group"));
 
   // ✅ Only admins can toggle
-  if (!chat.groupAdmins.some(a => a.toString() === currentUserId)) {
+  if (!chat.groupAdmins.some((a) => a.toString() === currentUserId)) {
     return next(new ApiError(403, "Only admins can change roles"));
   }
 
   // ❗ Check member exists
-  if (!chat.members.some(m => m.toString() === memberId)) {
+  if (!chat.members.some((m) => m.toString() === memberId)) {
     return next(new ApiError(400, "User is not a member"));
   }
 
   const isAlreadyAdmin = chat.groupAdmins.some(
-    a => a.toString() === memberId
+    (a) => a.toString() === memberId,
   );
 
   if (isAlreadyAdmin) {
@@ -697,7 +847,7 @@ const toggleGroupAdmin: RequestHandler = TryCatch(async (req, res, next) => {
 
     // 🔻 Demote
     chat.groupAdmins = chat.groupAdmins.filter(
-      a => a.toString() !== memberId
+      (a) => a.toString() !== memberId,
     );
   } else {
     // 🔺 Promote
@@ -708,14 +858,14 @@ const toggleGroupAdmin: RequestHandler = TryCatch(async (req, res, next) => {
 
   const user = await UserModel.findById(memberId, "fullName");
 
-  emitEvent(req, ALERT, chat.members, {
-    chatId,
-    message: isAlreadyAdmin
-      ? `${user?.fullName} is no longer an admin`
-      : `${user?.fullName} is now an admin`,
-  });
+  // emitEvent(req, ALERT, chat.members, {
+  //   chatId,
+  //   message: isAlreadyAdmin
+  //     ? `${user?.fullName} is no longer an admin`
+  //     : `${user?.fullName} is now an admin`,
+  // });
 
-  emitEvent(req, REFETCH_CHATS, chat.members);
+  // emitEvent(req, REFETCH_CHATS, chat.members);
 
   res.json({ success: true });
 });
@@ -845,8 +995,6 @@ const toggleGroupAdmin: RequestHandler = TryCatch(async (req, res, next) => {
 //     messages: transformedMessages,
 //   });
 // });
-
-
 
 const allUsers = TryCatch(async (req, res) => {
   const currentUserId = req.user._id;
@@ -998,12 +1146,14 @@ export {
   createGroupChat,
   accessChat,
   fetchChats,
-  allMessages,
+  //allMessages,
   allMessagesOfChat,
   allUsers,
   renameGroup,
   addMembersToGroup,
-  removeMemberFromGroup
+  removeMemberFromGroup,
+  updateGroupIcon, 
+  removeGroupIcon
 };
 
 // const getMyNotifications = TryCatch(async (req, res) => {
