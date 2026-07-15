@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express"; //refer API reference of express site for more info.
 import cors from "cors";
 import path from "path";
