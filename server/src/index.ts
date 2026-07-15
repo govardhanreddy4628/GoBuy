@@ -1,6 +1,5 @@
+import "dotenv/config"; // ✅ MUST be the very first import — loads .env before anything else runs
 import "./utils/logger.js";
-import dotenv from "dotenv";
-dotenv.config();
 import { app } from "./app.js";
 import "colors";
 import connectDB from "./config/connectDB.js";

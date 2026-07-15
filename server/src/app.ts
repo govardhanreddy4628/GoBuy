@@ -214,8 +214,6 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 
-// // // Error handler (must be at last in code)
-// app.use(errorHandler);
 
 // const DIRNAME = path.resolve();
 // app.use(express.static(path.join(DIRNAME, "/client/dist")));  // React build files
@@ -230,5 +228,8 @@ app.use((req, res) => {
     message: "API route not found",
   });
 });
+
+// // // Error handler (must be at last in code)
+app.use(errorHandler);
 
 export { app }; // export the server

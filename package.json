@@ -9,7 +9,6 @@
     "start": "concurrently \"npm run server\" \"npm run client\" ",
     "dev": "concurrently \"npm run server\" \"npm run client\" \"npm run inngest\" "
   },
- 
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
     "concurrently": "^8.0.1"
